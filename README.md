@@ -10,13 +10,13 @@ Node Monitor is handy tool that shows you the current status of your Qortal node
 You can choose to enable in-app and/or e-mail notifications when certain events are triggered:
 
 - When your node goes offline, and when it comes back online again.
-- When your node goes out of synch, and when it synchs up again (you decide the synching threshold value).
+- When your node goes out of sync, and when it syncs up again (you decide the syncing threshold value).
 - When your active minting account stops minting, and when it starts minting again (you decide after how many minutes).
 - When your node's connected peers go below a specific number, and when it gains them again (you decide how many peers).
 
-In-app notifications will pop up on the bottom right of your screen when they are triggered and you can read them in the notifications panel in the app. In order to receive e-mail notifications you'll have to setup your mail provider's SMTP settings. I've made the process as simple as possible, you can learn more by watching the quick tour video.
+In-app notifications will pop up on the bottom right of your screen when they are triggered and you can read them in the notifications panel in the app. In order to receive e-mail notifications you'll have to setup your mail provider's SMTP settings. I've made the process as simple as possible, you can learn more by watching the install guide video.
 
-For those of you running the Qortal core on a headless Pi, I've added a CLI (Command Line Interface) version which is basically just the e-mail notifier. You can setup the app through an SSH tunnel by running the 'launch-terminal.sh' script, when you are done with the setup you'll run the daemon (background) process by choosing 'Start' in the terminal menu. The daemon will send e-mails when your settings get triggered. The CLI version can only send e-mail notifications. You can download the CLI scripts on GitHub, watch the CLI setup video to learn more. 
+For those of you running the Qortal core on a headless Pi, I've added a CLI (Command Line Interface) version which is basically just the e-mail notifier. You can setup the app through an SSH tunnel by running the 'launch-terminal.sh' script, when you are done with the setup you'll run the daemon (background) process by choosing 'Start' in the terminal menu. The daemon will send e-mails when your settings get triggered. The CLI version can only send e-mail notifications. You can download the CLI scripts on the GitHub releases page, watch the CLI setup video to learn more. 
 
 Other features for the non-CLI version include:
 
@@ -31,7 +31,7 @@ You can run the program as follows:
 
 For Windows:
 
-double click the 'setup.bat' file in your newly extracted folder, this will create a launcher file called 'Node Monitor'. Double click this file to run the program. If you ever decide to move the node-monitor folder to a different location you'll need to run the 'setup.bat' file again, a new launcher will be created using the path variable of the new location.
+double click the 'setup-windows.bat' file in your newly extracted folder, this will create a launcher file called 'Node Monitor'. Double click this file to run the program. If you ever decide to move the node-monitor folder to a different location you'll need to run the 'setup-windows.bat' file again, a new launcher will be created using the path variable of the new location.
 
 For Mac and Linux:
 
