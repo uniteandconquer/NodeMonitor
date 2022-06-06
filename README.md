@@ -14,7 +14,7 @@ You can choose to enable in-app and/or e-mail notifications when certain events 
 - When your active minting account stops minting, and when it starts minting again (you decide after how many minutes).
 - When your node's connected peers go below a specific number, and when it gains them again (you decide how many peers).
 
-In-app notifications will pop up on the bottom right of your screen when they are triggered and you can read them in the notifications panel in the app. In order to receive e-mail notifications you'll have to setup your mail provider's smtp settings. I've made the process as simple as possible, you can learn more by watching the quick tour video.
+In-app notifications will pop up on the bottom right of your screen when they are triggered and you can read them in the notifications panel in the app. In order to receive e-mail notifications you'll have to setup your mail provider's SMTP settings. I've made the process as simple as possible, you can learn more by watching the quick tour video.
 
 For those of you running the Qortal core on a headless Pi, I've added a CLI (Command Line Interface) version which is basically just the e-mail notifier. You can setup the app through an SSH tunnel by running the 'launch-terminal.sh' script, when you are done with the setup you'll run the daemon (background) process by choosing 'Start' in the terminal menu. The daemon will send e-mails when your settings get triggered. The CLI version can only send e-mail notifications. You can download the CLI scripts on GitHub, watch the CLI setup video to learn more. 
 
