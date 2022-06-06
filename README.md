@@ -21,7 +21,7 @@ For those of you running the Qortal core on a headless Pi, I've added a CLI (Com
 Other features for the non-CLI version include:
 
 - Customizable user interface styles, create your own or load preconfigured ones.
-- Node synch status, including a time estimation for when your node will be in synch (based on your current synching speed).
+- Node sync status, including a time estimation for when your node will be in sync (based on your current syncing speed).
 - Info about your active minting account, such as blocks minted, balance, level and level-up estimation based on your current minting efficiency.
 - Price lookup for all QORT trading pairs and US Dollar.
 
