@@ -17,7 +17,6 @@ import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
-import javax.swing.SwingUtilities;
 import javax.swing.event.ListSelectionEvent;
 
 public class NotificationsPanel extends javax.swing.JPanel
@@ -264,7 +263,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         emailLimitSlider.setValue(notifier.emailLimit);
         
         onlineBox.setSelected(notifier.onlineEnabled);
-        checkToggle(onlineBox, offlineBox, "onlineEnabled");
+        checkToggle(offlineBox, onlineBox, "onlineEnabled");
         
         mintLostBox.setSelected(notifier.mintLostEnabled);   
         checkToggle(mintLostBox, mintGainedBox, "mintGainedEnabled");   

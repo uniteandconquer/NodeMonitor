@@ -1000,6 +1000,11 @@ public class Notifier
         if(inAppEnabled)
             sendAlertToGui(subject, message);    
         
+        //avoids creating the db when trying to connect to it
+        File mailSettingsFile = new File(System.getProperty("user.dir") + "/databases/mail_settings.mv.db");
+        if(!mailSettingsFile.exists())
+            return;
+        
         if(!ConnectionDB.CanConnect("mail_settings", "node_monitor", appPw.toCharArray(), Folders.DB.get()))
         {
             //No sense in running the daemon if cannot acces e-mail settings
