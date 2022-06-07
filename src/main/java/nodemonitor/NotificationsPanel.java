@@ -17,6 +17,7 @@ import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ListSelectionEvent;
 
 public class NotificationsPanel extends javax.swing.JPanel
@@ -39,7 +40,8 @@ public class NotificationsPanel extends javax.swing.JPanel
         setEmailPanel();
         notifier.start();
         refreshNotifications();   
-        initListeners();        
+        initListeners();     
+        getSettings();
     }
     
     private void initListeners()
@@ -244,6 +246,45 @@ public class NotificationsPanel extends javax.swing.JPanel
                 }
             }
         }
+    }
+    
+    private void getSettings()
+    {
+        inBackgroundBox.setSelected(notifier.runInBackground);
+        inAppBox.setSelected(notifier.inAppEnabled);
+        emailBox.setSelected(notifier.emailEnabled);
+        syncGainBox.setSelected(notifier.syncGainedEnabled);
+        connectionsGainedBox.setSelected(notifier.connectGainedEnabled);
+        mintGainedBox.setSelected(notifier.mintGainedEnabled);
+        offlineBox.setSelected(notifier.offlineEnabled);
+        emailLimitBox.setSelected(notifier.emailLimitEnabled);
+        syncSlider.setValue(notifier.syncThreshold);
+        connectionsSlider.setValue(notifier.connectThreshold);
+        mintSlider.setValue(notifier.mintThreshold);
+        emailLimitSlider.setValue(notifier.emailLimit);
+        
+        onlineBox.setSelected(notifier.onlineEnabled);
+        checkToggle(onlineBox, offlineBox, "onlineEnabled");
+        
+        mintLostBox.setSelected(notifier.mintLostEnabled);   
+        checkToggle(mintLostBox, mintGainedBox, "mintGainedEnabled");   
+        
+        syncLostBox.setSelected(notifier.syncLostEnabled);
+        checkToggle(syncLostBox, syncGainBox, "syncGainedEnabled");
+        
+        connectionsLostBox.setSelected(notifier.connectLostEnabled);
+        checkToggle(connectionsLostBox, connectionsGainedBox, "connectGainedEnabled");
+    }
+    
+    private void checkToggle(JCheckBox source, JCheckBox target, String key)
+    {        
+        if(!source.isSelected())
+        {
+            target.setEnabled(false);
+            target.setSelected(false);
+            Utilities.updateSetting(key, "false", "notifications.json");
+        }
+        target.setEnabled(source.isSelected());
     }
     
     /**
@@ -1295,13 +1336,7 @@ public class NotificationsPanel extends javax.swing.JPanel
     {//GEN-HEADEREND:event_syncLostBoxActionPerformed
         notifier.syncLostEnabled = syncLostBox.isSelected();
         Utilities.updateSetting("syncLostEnabled", String.valueOf(syncLostBox.isSelected()),"notifications.json");        
-        
-        if(!syncLostBox.isSelected())
-        {
-            syncGainBox.setEnabled(false);
-            syncGainBox.setSelected(false);
-        }
-        syncGainBox.setEnabled(syncLostBox.isSelected());
+        checkToggle(syncLostBox, syncGainBox, "syncGainedEnabled");
     }//GEN-LAST:event_syncLostBoxActionPerformed
 
     private void syncGainBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_syncGainBoxActionPerformed
@@ -1314,13 +1349,7 @@ public class NotificationsPanel extends javax.swing.JPanel
     {//GEN-HEADEREND:event_connectionsLostBoxActionPerformed
         notifier.connectLostEnabled = connectionsLostBox.isSelected();
         Utilities.updateSetting("connectLostEnabled", String.valueOf(connectionsLostBox.isSelected()),"notifications.json");        
-        
-        if(!connectionsLostBox.isSelected())
-        {
-            connectionsGainedBox.setEnabled(false);
-            connectionsGainedBox.setSelected(false);
-        }
-        connectionsGainedBox.setEnabled(connectionsLostBox.isSelected());
+        checkToggle(connectionsLostBox, connectionsGainedBox, "connectGainedEnabled");
     }//GEN-LAST:event_connectionsLostBoxActionPerformed
 
     private void connectionsGainedBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_connectionsGainedBoxActionPerformed
@@ -1339,13 +1368,7 @@ public class NotificationsPanel extends javax.swing.JPanel
     {//GEN-HEADEREND:event_offlineBoxActionPerformed
         notifier.offlineEnabled = offlineBox.isSelected();
         Utilities.updateSetting("offlineEnabled", String.valueOf(offlineBox.isSelected()),"notifications.json");
-        
-        if(!offlineBox.isSelected())
-        {
-            onlineBox.setEnabled(false);
-            onlineBox.setSelected(false);
-        }
-        onlineBox.setEnabled(offlineBox.isSelected());
+        checkToggle(offlineBox, onlineBox, "onlineEnabled");
     }//GEN-LAST:event_offlineBoxActionPerformed
 
     private void syncSliderStateChanged(javax.swing.event.ChangeEvent evt)//GEN-FIRST:event_syncSliderStateChanged
@@ -1491,14 +1514,8 @@ public class NotificationsPanel extends javax.swing.JPanel
     private void mintLostBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_mintLostBoxActionPerformed
     {//GEN-HEADEREND:event_mintLostBoxActionPerformed
         notifier.mintLostEnabled = mintLostBox.isSelected();
-        Utilities.updateSetting("mintLostEnabled", String.valueOf(mintLostBox.isSelected()),"notifications.json");        
-        
-        if(!mintLostBox.isSelected())
-        {
-            mintGainedBox.setEnabled(false);
-            mintGainedBox.setSelected(false);
-        }
-        mintGainedBox.setEnabled(mintLostBox.isSelected());
+        Utilities.updateSetting("mintLostEnabled", String.valueOf(mintLostBox.isSelected()),"notifications.json");                
+        checkToggle(mintLostBox, mintGainedBox,"mintGainedEnabled");
     }//GEN-LAST:event_mintLostBoxActionPerformed
 
     private void clearAllButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_clearAllButtonActionPerformed

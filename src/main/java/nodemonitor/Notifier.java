@@ -26,6 +26,7 @@ import org.json.JSONObject;
 
 public class Notifier
 {    
+    protected boolean runInBackground;
     protected boolean emailEnabled;
     protected boolean emailLimitEnabled;
     protected boolean inAppEnabled;    
@@ -165,107 +166,52 @@ public class Notifier
                 JSONObject jsonObject = new JSONObject(jsonString);
                 
                 if(jsonObject.has("runInBackground"))
-                {
-                    if(gui != null)
-                        gui.notificationsPanel.inBackgroundBox.setSelected(Boolean.parseBoolean(jsonObject.getString("runInBackground")));
-                }                 
+                    runInBackground = Boolean.parseBoolean(jsonObject.getString("runInBackground"));   
                 if(jsonObject.has("inAppEnabled"))
-                {
-                    inAppEnabled = Boolean.parseBoolean(jsonObject.getString("inAppEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.inAppBox.setSelected(inAppEnabled);
-                }                
+                    inAppEnabled = Boolean.parseBoolean(jsonObject.getString("inAppEnabled"));     
                 if(jsonObject.has("emailEnabled"))
-                {
-                    emailEnabled = Boolean.parseBoolean(jsonObject.getString("emailEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.emailBox.setSelected(emailEnabled);
-                }                
+                    emailEnabled = Boolean.parseBoolean(jsonObject.getString("emailEnabled"));              
                 if(jsonObject.has("syncLostEnabled"))
-                {
-                    syncLostEnabled = Boolean.parseBoolean(jsonObject.getString("syncLostEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.syncLostBox.setSelected(syncLostEnabled);
-                }                
+                    syncLostEnabled = Boolean.parseBoolean(jsonObject.getString("syncLostEnabled"));             
                 if(jsonObject.has("syncGainedEnabled"))
-                {
-                    syncGainedEnabled = Boolean.parseBoolean(jsonObject.getString("syncGainedEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.syncGainBox.setSelected(syncGainedEnabled);
-                }                
+                    syncGainedEnabled = Boolean.parseBoolean(jsonObject.getString("syncGainedEnabled"));              
                 if(jsonObject.has("connectLostEnabled"))
-                {
-                    connectLostEnabled =  Boolean.parseBoolean(jsonObject.getString("connectLostEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.connectionsLostBox.setSelected(connectLostEnabled);
-                }                
+                    connectLostEnabled =  Boolean.parseBoolean(jsonObject.getString("connectLostEnabled"));             
                 if(jsonObject.has("connectGainedEnabled"))
-                {
-                    connectGainedEnabled = Boolean.parseBoolean(jsonObject.getString("connectGainedEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.connectionsGainedBox.setSelected(connectGainedEnabled);
-                }         
+                    connectGainedEnabled = Boolean.parseBoolean(jsonObject.getString("connectGainedEnabled"));       
                 if(jsonObject.has("mintLostEnabled"))
-                {
-                    mintLostEnabled =  Boolean.parseBoolean(jsonObject.getString("mintLostEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.mintLostBox.setSelected(mintLostEnabled);
-                }                
+                    mintLostEnabled =  Boolean.parseBoolean(jsonObject.getString("mintLostEnabled"));            
                 if(jsonObject.has("mintGainedEnabled"))
-                {
-                    mintGainedEnabled = Boolean.parseBoolean(jsonObject.getString("mintGainedEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.mintGainedBox.setSelected(mintGainedEnabled);
-                }               
+                    mintGainedEnabled = Boolean.parseBoolean(jsonObject.getString("mintGainedEnabled"));          
                 if(jsonObject.has("offlineEnabled"))
-                {
-                    offlineEnabled = Boolean.parseBoolean(jsonObject.getString("offlineEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.offlineBox.setSelected(offlineEnabled);
-                }                
+                    offlineEnabled = Boolean.parseBoolean(jsonObject.getString("offlineEnabled"));          
                 if(jsonObject.has("onlineEnabled"))
-                {
-                    onlineEnabled = Boolean.parseBoolean(jsonObject.getString("onlineEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.onlineBox.setSelected(onlineEnabled);
-                }                 
+                    onlineEnabled = Boolean.parseBoolean(jsonObject.getString("onlineEnabled"));            
                 if(jsonObject.has("emailLimitEnabled"))
-                {
-                    emailLimitEnabled = Boolean.parseBoolean(jsonObject.getString("emailLimitEnabled"));
-                    if(gui != null)
-                        gui.notificationsPanel.emailLimitBox.setSelected(emailLimitEnabled);
-                }   
+                    emailLimitEnabled = Boolean.parseBoolean(jsonObject.getString("emailLimitEnabled")); 
                 if(jsonObject.has("syncThreshold"))
                 {
                     syncThreshold = Integer.parseInt(jsonObject.getString("syncThreshold"));
                     syncThreshold = syncThreshold < 5 ? 5 : syncThreshold;                    
                     syncThreshold = syncThreshold > 100 ? 100 : syncThreshold;
-                    if(gui != null)
-                        gui.notificationsPanel.syncSlider.setValue(syncThreshold);
                 }     
                 if(jsonObject.has("connectThreshold"))
                 {
                     connectThreshold = Integer.parseInt(jsonObject.getString("connectThreshold"));
                     connectThreshold = connectThreshold < 1 ? 1 : connectThreshold;                    
                     connectThreshold = connectThreshold > 100 ? 100 : connectThreshold;
-                    if(gui != null)
-                        gui.notificationsPanel.connectionsSlider.setValue(connectThreshold);
                 }   
                 if(jsonObject.has("mintThreshold"))
                 {
                     mintThreshold = Integer.parseInt(jsonObject.getString("mintThreshold"));
                     mintThreshold = mintThreshold < 5 ? 5 : mintThreshold;                    
                     mintThreshold = mintThreshold > 120 ? 120 : mintThreshold;
-                    if(gui != null)
-                        gui.notificationsPanel.mintSlider.setValue(mintThreshold);
                 }
                 if(jsonObject.has("emailLimit"))
                 {
                     emailLimit = Integer.parseInt(jsonObject.getString("emailLimit"));
                     emailLimit = emailLimit < 5 ? 5 : emailLimit;                    
                     emailLimit = emailLimit > 100 ? 100 : emailLimit;
-                    if(gui != null)
-                        gui.notificationsPanel.emailLimitSlider.setValue(emailLimit);
                 }
             }                
         }
@@ -954,7 +900,6 @@ public class Notifier
                         
 //                        BackgroundService.AppendLog("SENDING OFFLINE NOTIFICATION");
                         
-                        sendAlertPool();
                     }
                     
                     wasOnline = false;
@@ -1044,7 +989,7 @@ public class Notifier
     private void sendAlert(String subject, String message, boolean emailAllowed)
     {       
         //separate from sendAlertToGui in order to occlude footer
-        if(gui != null)
+        if(gui != null && inAppEnabled)
             gui.showInAppNotification(message);
 
         message += "\n\nAt time of notification:\n\n"
@@ -1052,7 +997,8 @@ public class Notifier
                 "\nChain height: " + Utilities.numberFormat(chainHeight) +
                 "\nConnected peers: " + numberOfConnections;
 
-        sendAlertToGui(subject, message);    
+        if(inAppEnabled)
+            sendAlertToGui(subject, message);    
         
         if(!ConnectionDB.CanConnect("mail_settings", "node_monitor", appPw.toCharArray(), Folders.DB.get()))
         {
