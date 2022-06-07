@@ -1248,6 +1248,7 @@ public class NotificationsPanel extends javax.swing.JPanel
             emailEnabledLabel.setText("Email notifications are enabled");  
             appPassword = String.valueOf(password);
             notifier.setAppPw(appPassword);
+            notifier.emailEnabled = true;
         }
         else
             JOptionPane.showMessageDialog(this, "Error while encrypting password",
