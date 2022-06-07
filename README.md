@@ -1,5 +1,5 @@
 
-Watch the install guide video at 
+Watch the install guide video at https://rumble.com/v17oe2h-node-monitor-install-guide.html
 
 Watch the CLI setup video at 
 
