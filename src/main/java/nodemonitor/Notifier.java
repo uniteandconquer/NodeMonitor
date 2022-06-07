@@ -752,7 +752,7 @@ public class Notifier
 //                System.out.flush();
 //                System.out.print("\r");
 //                System.out.print(durationString); 
-                if(iterations % 5 == 0)
+                if(iterations % 5 == 0 && iterations > 0)
                     BackgroundService.AppendLog(durationString);
                                 
                 if(!emailEnabled && !inAppEnabled)
@@ -939,13 +939,7 @@ public class Notifier
                                 }
                             }
                             
-                            lastBlocksMinted = blocksMinted;
-                            
-//                            if(iterations == 0)
-//                                alertsPool.clear();
-                            
-                            sendAlertPool();
-                            
+                            lastBlocksMinted = blocksMinted;                            
                         }
                     }
                 }
@@ -971,6 +965,8 @@ public class Notifier
                 }
                 
                 iterations++;
+                            
+                sendAlertPool();
                 
             }
         }, 0, updateDelta);

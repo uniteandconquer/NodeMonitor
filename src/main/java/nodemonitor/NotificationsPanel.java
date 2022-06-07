@@ -1491,7 +1491,14 @@ public class NotificationsPanel extends javax.swing.JPanel
     private void mintLostBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_mintLostBoxActionPerformed
     {//GEN-HEADEREND:event_mintLostBoxActionPerformed
         notifier.mintLostEnabled = mintLostBox.isSelected();
-        Utilities.updateSetting("mintLostEnabled", String.valueOf(mintLostBox.isSelected()),"notifications.json");
+        Utilities.updateSetting("mintLostEnabled", String.valueOf(mintLostBox.isSelected()),"notifications.json");        
+        
+        if(!mintLostBox.isSelected())
+        {
+            mintGainedBox.setEnabled(false);
+            mintGainedBox.setSelected(false);
+        }
+        mintGainedBox.setEnabled(mintLostBox.isSelected());
     }//GEN-LAST:event_mintLostBoxActionPerformed
 
     private void clearAllButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_clearAllButtonActionPerformed
