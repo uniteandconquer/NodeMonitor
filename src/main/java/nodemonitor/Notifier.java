@@ -74,7 +74,7 @@ public class Notifier
          
     private int iterations = 0;
     
-    private String appPw = "";
+    protected String appPw = "";
     
     protected boolean isSending;
     
@@ -93,6 +93,8 @@ public class Notifier
         {
             attemptLogin();
             startShutdownHook(true);
+            //e-mail always enabled for daemon
+            emailEnabled = true;
             start();
         }
         else
@@ -688,6 +690,8 @@ public class Notifier
              BackgroundService.AppendLog("Could not find an active minting account, minting notifications are not active");
          else
             mintingAccount = mintingAccountObject.toString();
+         
+         BackgroundService.AppendLog("Starting notifier...");
 
         timer.scheduleAtFixedRate(new TimerTask()
         {
@@ -698,7 +702,7 @@ public class Notifier
 //                System.out.flush();
 //                System.out.print("\r");
 //                System.out.print(durationString); 
-                if(iterations % 5 == 0 && iterations > 0)
+                if(iterations % 10 == 0 && iterations > 0)
                     BackgroundService.AppendLog(durationString);
                                 
                 if(!emailEnabled && !inAppEnabled)

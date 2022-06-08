@@ -69,6 +69,7 @@ public class BackgroundService
             //CLI version
             
             //Allow systray for daemon process, not for terminal
+            //Systray will not work over SSH, no DISPLAY available
             if(isDaemon)
                 SetTrayIcon(false);
             
@@ -79,7 +80,7 @@ public class BackgroundService
 
     
     private void SetTrayIcon(boolean GUI_enabled)
-    {
+    {  
         if (SystemTray.isSupported())
         {
             AppendLog("Setting tray icon");

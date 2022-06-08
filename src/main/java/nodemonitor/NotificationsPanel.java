@@ -23,7 +23,6 @@ public class NotificationsPanel extends javax.swing.JPanel
 {
     private DatabaseManager dbManager;
     private GUI gui;
-    private String appPassword = "";
     private Notifier notifier;
     
     public NotificationsPanel()
@@ -85,9 +84,9 @@ public class NotificationsPanel extends javax.swing.JPanel
         if(!file.exists())
             return;
         
-        if(ConnectionDB.CanConnect("mail_settings", "node_monitor", appPassword.toCharArray(), Folders.DB.get()))
+        if(ConnectionDB.CanConnect("mail_settings", "node_monitor", notifier.appPw.toCharArray(), Folders.DB.get()))
         {
-            try(Connection connection = ConnectionDB.getConnection("mail_settings", "node_monitor", appPassword.toCharArray(), Folders.DB.get()))
+            try(Connection connection = ConnectionDB.getConnection("mail_settings", "node_monitor", notifier.appPw.toCharArray(), Folders.DB.get()))
             {
                 recipientInput.setText((String)dbManager.GetFirstItem("mail_server", "recipient", connection));
                 smtpServerInput.setText((String)dbManager.GetFirstItem("mail_server", "smtp", connection));
@@ -135,7 +134,7 @@ public class NotificationsPanel extends javax.swing.JPanel
             File file = new File(System.getProperty("user.dir") + "/databases/mail_settings.mv.db");
             if(file.exists())
             {
-                if(ConnectionDB.CanConnect("mail_settings", "node_monitor", appPassword.toCharArray(), Folders.DB.get()))
+                if(ConnectionDB.CanConnect("mail_settings", "node_monitor", notifier.appPw.toCharArray(), Folders.DB.get()))
                 {
                     loginPanel.setVisible(false);
                     if(!settingsToggleButton.isSelected())
@@ -1246,8 +1245,7 @@ public class NotificationsPanel extends javax.swing.JPanel
             settingsToggleButton.setSelected(false);
             settingsToggleButton.setText("Show mail server settings");
             emailEnabledLabel.setText("Email notifications are enabled");  
-            appPassword = String.valueOf(password);
-            notifier.setAppPw(appPassword);
+            notifier.setAppPw(String.valueOf(password));
             notifier.emailEnabled = true;
         }
         else
@@ -1411,10 +1409,9 @@ public class NotificationsPanel extends javax.swing.JPanel
     {//GEN-HEADEREND:event_loginButtonActionPerformed
         if(ConnectionDB.CanConnect("mail_settings", "node_monitor", loginPasswordField.getPassword(), Folders.DB.get()))
         {
-            appPassword = String.valueOf(loginPasswordField.getPassword());
             loginPanel.setVisible(false);
             emailEnabledLabel.setText("Email notifications are enabled");  
-            notifier.setAppPw(appPassword);
+            notifier.setAppPw(String.valueOf(loginPasswordField.getPassword()));
             notifier.emailEnabled = true;
             
             if(settingsToggleButton.isSelected())
