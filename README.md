@@ -1,7 +1,7 @@
 
 Watch the install guide video at https://rumble.com/v17oe2h-node-monitor-install-guide.html
 
-Watch the CLI setup video at 
+Watch the CLI setup video at https://rumble.com/v17ruw3-node-monitor-cli-setup-guide.html
 
 --------
 
@@ -48,7 +48,7 @@ then press enter and type:
  (don't forget the period) then enter. Make sure that you open the terminal window in the node-monitor folder.
  
  
-To run the CLI version it is advised to watch the CLI setup video at 
+To run the CLI version it is advised to watch the CLI setup video at https://rumble.com/v17ruw3-node-monitor-cli-setup-guide.html
 
 ----------
 
