@@ -485,7 +485,7 @@
                     </Component>
                     <Component class="javax.swing.JButton" name="setScriptButton">
                       <Properties>
-                        <Property name="text" type="java.lang.String" value="Set start script filepath"/>
+                        <Property name="text" type="java.lang.String" value="Set start up file path"/>
                         <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                           <Dimension value="[200, 27]"/>
                         </Property>

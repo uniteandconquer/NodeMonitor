@@ -5,7 +5,11 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
 import java.awt.event.KeyEvent;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -20,6 +24,8 @@ import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class NotificationsPanel extends javax.swing.JPanel
 {
@@ -1682,8 +1688,33 @@ public class NotificationsPanel extends javax.swing.JPanel
                 }                
             }
             
-            Utilities.updateSetting("startScriptPath", selectedFile.getPath(), "notifications.json");
-            JOptionPane.showMessageDialog(this, "Qortal start up file path was set:\n" + selectedFile.getPath());            
+            if(isWindows)
+                Utilities.updateSetting("startScriptPath", selectedFile.getPath(), "notifications.json");
+            else
+                Utilities.updateSetting("startScriptPath", System.getProperty("user.dir") + "/start-qortal.sh", "notifications.json");
+                
+            if(isWindows)
+                JOptionPane.showMessageDialog(this, "Qortal start up file path was set:\n" + selectedFile.getPath()); 
+            else
+            {
+                File qortalStartScript = new File(System.getProperty("user.dir") + "/start-qortal.sh");
+                
+                try(BufferedWriter writer = new BufferedWriter(new FileWriter(qortalStartScript)))
+                {
+                    String command = "cd " + selectedFile.getParent() + " && ./start.sh"; 
+                    writer.write(command);
+                    writer.close();     
+                
+                    JOptionPane.showMessageDialog(this, "Qortal start up file path was set:\n" + selectedFile.getPath() + "\n\n"
+                            + "PLEASE MAKE SURE THAT THE 'start-qortal.sh' FILE IN THE\n"
+                            + "'node-monitor' FOLDER IS EXECUTABLE!\n\n" + System.getProperty("user.dir") + "/start-qortal.sh");         
+                }
+                catch (IOException e)
+                {
+                    JOptionPane.showMessageDialog(this, "An error occured, could not set start up file : \n" + e.toString()); 
+                    BackgroundService.AppendLog(e);
+                }                
+            }
         }
     }//GEN-LAST:event_setScriptButtonActionPerformed
 

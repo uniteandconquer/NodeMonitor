@@ -934,11 +934,11 @@ public class Utilities
                     writer.close();
                 }     
             }                
-            }
-            catch (IOException | JSONException e)
-            {
-                BackgroundService.AppendLog(e);
-            }
+        }
+        catch (IOException | JSONException e)
+        {
+            BackgroundService.AppendLog(e);
+        }
     }   
     
     public static void createSettingsFile(File settingsFile)

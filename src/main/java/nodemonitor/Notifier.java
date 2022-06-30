@@ -537,16 +537,35 @@ public class Notifier
             
             if(restartCoreEnabled)
             {
-                System.err.println("\nThe default filepath for Raspberry Pi users is usually /home/pi/qortal/start.sh\n\n"
-                        + "If your username is not 'pi' try /home/{your user name}/qortal/start.sh\n");
+                System.err.println("\nThe default filepath for Raspberry Pi users is usually /home/pi/qortal\n\n"
+                        + "If your username is not 'pi' try /home/{your user name}/qortal\n");
                 String filePath = getScriptFilePath(scanner);
                 if(filePath.isBlank())
                     restartCoreEnabled = false;
                 else
                 {
-                    System.out.println("\nSuccess! Start script was set to : " + filePath + "\n"
-                            + "This script will be executed when Node Monitor detects that your node has gone offline\n");
-                    Utilities.updateSetting("startScriptPath", filePath, "notifications.json");
+                    File qortalStartScript = new File(System.getProperty("user.dir") + "/start-qortal.sh");
+                
+                    try(BufferedWriter writer = new BufferedWriter(new FileWriter(qortalStartScript)))
+                    {
+                        String command = "cd " + filePath + " && ./start.sh"; 
+                        writer.write(command);
+                        writer.close();     
+
+                        System.out.println("\n\nSuccess! Qortal folder path was set:\n" + filePath + "\n\n"
+                                + "PLEASE MAKE SURE THAT THE  'start-qortal.sh' FILE IN THE\n"
+                                + "'node-monitor' FOLDER IS EXECUTABLE!!\n\n" + System.getProperty("user.dir") + "/start-qortal.sh\n\n"
+                                        + "This script will be executed when Node Monitor detects that your node has gone offline\n");     
+                        
+                        Utilities.updateSetting("startScriptPath", System.getProperty("user.dir") + "/start-qortal.sh", "notifications.json");  
+                        
+                    }
+                    catch (IOException e)
+                    {
+                        System.out.println("\n\nAn error occured, could not set start up file : \n" + e.toString() + "\n"
+                                + "Could not create 'start-qortal.sh' script"); 
+                        BackgroundService.AppendLog(e);
+                    }                
                 }                    
             }
          }
@@ -693,17 +712,17 @@ public class Notifier
 
         do
         {   
-            System.out.println("\nPlease type the full file path of your Qortal start script ('start.sh' in your qortal folder):");                 
+            System.out.println("\nPlease enter the full file path of your Qortal folder:");                 
             filePath = scanner.next();
 
-            if(filePath.endsWith("start.sh"))
+            if(filePath.endsWith("qortal"))
             {
                 try
                 {
                     File file = new File(filePath);
-                    if(!file.exists())
+                    if(!file.isDirectory())
                     {
-                        choice = getChoice("File '" + filePath+  "' doesn't exist, try again?", scanner);
+                        choice = getChoice("Folder '" + filePath+  "' doesn't exist, try again?", scanner);
                         if(choice == 1)
                             filePath = "";
                         else
@@ -714,7 +733,7 @@ public class Notifier
                 }
                 catch (Exception e)
                 {
-                    choice = getChoice("Invalid file path: '" + filePath+  "', try again?", scanner);
+                    choice = getChoice("Invalid path: '" + filePath+  "', try again?", scanner);
                     if(choice == 1)
                         filePath = "";
                     else
@@ -724,14 +743,14 @@ public class Notifier
             }
             else
             {                        
-                choice = getChoice("Invalid file : '" + filePath+  "' file must be named 'start.sh', try again?", scanner);
+                choice = getChoice("Invalid folder : '" + filePath+  "' folder must be named 'qortal', try again?", scanner);
                 if(choice == 1)
                     filePath = "";
                 else
                     break;
             }
         }
-        while (!filePath.endsWith("start.sh"));
+        while (!filePath.endsWith("qortal"));
          
         System.out.println("\nStartup script file path not set, restart core setting automatically set to false.\n");
         return "";
@@ -1425,7 +1444,7 @@ public class Notifier
                                 + script.getPath());
                     }
                 }
-                catch (InterruptedException e)
+                catch (Exception e)
                 {
                     BackgroundService.AppendLog(e);
                 }
