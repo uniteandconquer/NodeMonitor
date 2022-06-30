@@ -768,7 +768,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         gridBagConstraints.insets = new java.awt.Insets(10, 0, 15, 0);
         settingsPanel.add(jSeparator10, gridBagConstraints);
 
-        setScriptButton.setText("Set start script filepath");
+        setScriptButton.setText("Set start up file path");
         setScriptButton.setMaximumSize(new java.awt.Dimension(200, 27));
         setScriptButton.setMinimumSize(new java.awt.Dimension(200, 27));
         setScriptButton.setPreferredSize(new java.awt.Dimension(200, 27));
@@ -1610,6 +1610,16 @@ public class NotificationsPanel extends javax.swing.JPanel
 
     private void restartCoreCheckboxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_restartCoreCheckboxActionPerformed
     {//GEN-HEADEREND:event_restartCoreCheckboxActionPerformed
+        Object filePathObject = Utilities.getSetting("startScriptPath", "notifications.json");
+        if(filePathObject == null || filePathObject.toString().isBlank())
+        {
+            JOptionPane.showMessageDialog(this, "Please set the file path for your Qortal startup file first");
+            notifier.restartCoreEnabled = false;
+            restartCoreCheckbox.setSelected(false);
+            Utilities.updateSetting("restartCoreEnabled", "false","notifications.json");
+            return;            
+        }
+        
         notifier.restartCoreEnabled = restartCoreCheckbox.isSelected();
         Utilities.updateSetting("restartCoreEnabled", String.valueOf(restartCoreCheckbox.isSelected()),"notifications.json");
     }//GEN-LAST:event_restartCoreCheckboxActionPerformed
