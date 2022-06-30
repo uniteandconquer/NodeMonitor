@@ -38,6 +38,7 @@ public class Notifier
     protected boolean connectGainedEnabled;    
     protected boolean offlineEnabled;
     protected boolean onlineEnabled;
+    protected boolean restartCoreEnabled;
     protected int syncThreshold = 15;
     protected int connectThreshold = 5;
     protected int mintThreshold = 15;
@@ -188,7 +189,9 @@ public class Notifier
                 if(jsonObject.has("offlineEnabled"))
                     offlineEnabled = Boolean.parseBoolean(jsonObject.getString("offlineEnabled"));          
                 if(jsonObject.has("onlineEnabled"))
-                    onlineEnabled = Boolean.parseBoolean(jsonObject.getString("onlineEnabled"));            
+                    onlineEnabled = Boolean.parseBoolean(jsonObject.getString("onlineEnabled"));          
+                if(jsonObject.has("restartCoreEnabled"))
+                    restartCoreEnabled = Boolean.parseBoolean(jsonObject.getString("restartCoreEnabled"));            
                 if(jsonObject.has("emailLimitEnabled"))
                     emailLimitEnabled = Boolean.parseBoolean(jsonObject.getString("emailLimitEnabled")); 
                 if(jsonObject.has("syncThreshold"))
@@ -268,7 +271,7 @@ public class Notifier
         
         String[] options =
         {
-            "1- Start",
+            "1- Start monitoring now",
             "2- Notifications settings",
             "3- Show notifications settings",
             "4- Mail server settings",
@@ -527,11 +530,33 @@ public class Notifier
          if(offlineEnabled)
          {
             choice = getChoice("Send an e-mail when my node is back online:", scanner);         
-            onlineEnabled = choice == 1;             
+            onlineEnabled = choice == 1;      
+            
+            choice = getChoice("Try to restart the Qortal core when my node goes offline:", scanner);
+            restartCoreEnabled = choice == 1;
+            
+            if(restartCoreEnabled)
+            {
+                System.err.println("\nThe default filepath for Raspberry Pi users is usually /home/pi/qortal/start.sh\n\n"
+                        + "If your username is not 'pi' try /home/{your user name}/qortal/start.sh\n");
+                String filePath = getScriptFilePath(scanner);
+                if(filePath.isBlank())
+                    restartCoreEnabled = false;
+                else
+                {
+                    System.out.println("\nSuccess! Start script was set to : " + filePath + "\n"
+                            + "This script will be executed when Node Monitor detects that your node has gone offline\n");
+                    Utilities.updateSetting("startScriptPath", filePath, "notifications.json");
+                }                    
+            }
          }
          else
+         {
              onlineEnabled = false;
+             restartCoreEnabled = false;
+         }
          Utilities.updateSetting("onlineEnabled", String.valueOf(onlineEnabled), "notifications.json");
+         Utilities.updateSetting("restartCoreEnabled", String.valueOf(restartCoreEnabled), "notifications.json");
          
          choice = getChoice("Send an e-mail when my node goes out of sync:", scanner);
          syncLostEnabled = choice == 1;
@@ -658,6 +683,58 @@ public class Notifier
          }
          
          return choice;
+     }
+     
+     private String getScriptFilePath(Scanner scanner)
+     {
+         int choice;
+         
+        String filePath;
+
+        do
+        {   
+            System.out.println("\nPlease type the full file path of your Qortal start script ('start.sh' in your qortal folder):");                 
+            filePath = scanner.next();
+
+            if(filePath.endsWith("start.sh"))
+            {
+                try
+                {
+                    File file = new File(filePath);
+                    if(!file.exists())
+                    {
+                        choice = getChoice("File '" + filePath+  "' doesn't exist, try again?", scanner);
+                        if(choice == 1)
+                            filePath = "";
+                        else
+                            break;
+                    }
+                    else
+                        return filePath;
+                }
+                catch (Exception e)
+                {
+                    choice = getChoice("Invalid file path: '" + filePath+  "', try again?", scanner);
+                    if(choice == 1)
+                        filePath = "";
+                    else
+                        break;
+                }
+
+            }
+            else
+            {                        
+                choice = getChoice("Invalid file : '" + filePath+  "' file must be named 'start.sh', try again?", scanner);
+                if(choice == 1)
+                    filePath = "";
+                else
+                    break;
+            }
+        }
+        while (!filePath.endsWith("start.sh"));
+         
+        System.out.println("\nStartup script file path not set, restart core setting automatically set to false.\n");
+        return "";
      }
     
     protected void start()
@@ -901,6 +978,9 @@ public class Notifier
                     {                        
                         poolAlert("Lost connection", "Qortal Node Monitor has lost the connection to your Qortal core.\nPlease check whether "
                                 + "your node is still online.",System.currentTimeMillis());
+                        
+                        if(restartCoreEnabled)
+                            startQortalScript();
                         
 //                        BackgroundService.AppendLog("SENDING OFFLINE NOTIFICATION");
                         
@@ -1282,12 +1362,77 @@ public class Notifier
         }
         catch (IOException ex)
         {
-            System.out.println("IOException. Faild to start process. Reason: " + ex.getMessage());
+            System.out.println("IOException. Failed to start process. Reason: " + ex.getMessage());
         }
         
 //        System.out.println("Process Terminated.");
 //        System.exit(0);
 
+    }
+    
+    public void startQortalScript()
+    {  
+        Thread thread = new Thread(()->
+        {
+            Object filePathObject = Utilities.getSetting("startScriptPath", "settings.json");
+            if(filePathObject == null)
+            {
+                poolAlert("Could not restart Qortal core", 
+                        "Node Monitor failed to fetch the file path for your Qortal start script ('start.sh')\n\n"
+                    + "Please set the file path for your Qortal start script through the notifications settings in "
+                                + "the UI, or through the CLI terminal.", System.currentTimeMillis());    
+
+                BackgroundService.AppendLog("Failed to fetch start script file path from settings.json");
+            }
+            else
+            {
+                try
+                {     
+                    Thread.sleep(30000);
+                    
+                    File script = new File(filePathObject.toString());
+                    if(script.exists())
+                    {
+                        String extJar = Paths.get(script.getPath()).toString();
+                        ProcessBuilder processBuilder = new ProcessBuilder(extJar);
+                        processBuilder.redirectError(new File(Paths.get(System.getProperty("user.dir") + "/bin/qortal_script_error.txt").toString()));
+                        processBuilder.redirectInput();
+                        try
+                        {
+                            processBuilder.start();
+
+                            poolAlert("Qortal core restart", 
+                                    "Node Monitor has detected that your Qortal core has gone offline and has "
+                                + "attempted to restart your core. Please make sure you have received the "
+                                + "'back online' notification if you have enabled that notification, otherwise check "
+                                + "if your Qortal core is running.", System.currentTimeMillis());
+
+                            BackgroundService.AppendLog("Restarting Qortal core");
+                        }
+                        catch (IOException ex)
+                        {
+                            System.out.println("IOException. Faild to start process. Reason: " + ex.getMessage());
+                            BackgroundService.AppendLog("IOException. Faild to start process. Reason: " + ex.getMessage());
+                        }
+                    }
+                    else
+                    {
+                        poolAlert("Could not restart Qortal core", "The provided path for your Qortal start script does not exist\n\n"
+                                + script.getPath() + "\n\n"
+                                + "Please set the file path for your Qortal start script through the notifications settings in "
+                                + "the UI, or through the CLI terminal." , System.currentTimeMillis());
+                        BackgroundService.AppendLog("The provided path for your Qortal start script does not exist:\n\n"
+                                + script.getPath());
+                    }
+                }
+                catch (InterruptedException e)
+                {
+                    BackgroundService.AppendLog(e);
+                }
+            }            
+        });
+        thread.start();
+            
     }
     
 }

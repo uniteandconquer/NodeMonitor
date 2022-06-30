@@ -11,6 +11,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -18,6 +19,7 @@ import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.event.ListSelectionEvent;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class NotificationsPanel extends javax.swing.JPanel
 {
@@ -264,6 +266,9 @@ public class NotificationsPanel extends javax.swing.JPanel
         onlineBox.setSelected(notifier.onlineEnabled);
         checkToggle(offlineBox, onlineBox, "onlineEnabled");
         
+        restartCoreCheckbox.setSelected(notifier.restartCoreEnabled);
+        checkToggle(offlineBox, restartCoreCheckbox, "restartCoreEnabled");
+        
         mintLostBox.setSelected(notifier.mintLostEnabled);   
         checkToggle(mintLostBox, mintGainedBox, "mintGainedEnabled");   
         
@@ -325,12 +330,14 @@ public class NotificationsPanel extends javax.swing.JPanel
         mintLostBox = new javax.swing.JCheckBox();
         jSeparator8 = new javax.swing.JSeparator();
         jLabel5 = new javax.swing.JLabel();
-        jSeparator9 = new javax.swing.JSeparator();
         jSeparator3 = new javax.swing.JSeparator();
         emailLimitSlider = new javax.swing.JSlider();
         jLabel6 = new javax.swing.JLabel();
         emailLimitBox = new javax.swing.JCheckBox();
         emailLimitHintLabel = new javax.swing.JLabel();
+        restartCoreCheckbox = new javax.swing.JCheckBox();
+        jSeparator10 = new javax.swing.JSeparator();
+        setScriptButton = new javax.swing.JButton();
         loginPanel = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
         loginPasswordField = new javax.swing.JPasswordField();
@@ -457,7 +464,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 11;
+        gridBagConstraints.gridy = 14;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         gridBagConstraints.insets = new java.awt.Insets(10, 0, 0, 0);
         settingsPanel.add(syncLostBox, gridBagConstraints);
@@ -472,7 +479,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 12;
+        gridBagConstraints.gridy = 15;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(syncGainBox, gridBagConstraints);
 
@@ -486,7 +493,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 21;
+        gridBagConstraints.gridy = 24;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(connectionsLostBox, gridBagConstraints);
 
@@ -500,7 +507,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 22;
+        gridBagConstraints.gridy = 25;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(connectionsGainedBox, gridBagConstraints);
 
@@ -516,7 +523,6 @@ public class NotificationsPanel extends javax.swing.JPanel
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 9;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
-        gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
         settingsPanel.add(onlineBox, gridBagConstraints);
 
         offlineBox.setText("has gone offline");
@@ -551,14 +557,14 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 14;
+        gridBagConstraints.gridy = 17;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         settingsPanel.add(syncSlider, gridBagConstraints);
 
         jLabel1.setText("Set syncing treshold");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 13;
+        gridBagConstraints.gridy = 16;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
         settingsPanel.add(jLabel1, gridBagConstraints);
 
@@ -580,7 +586,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 24;
+        gridBagConstraints.gridy = 27;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 30, 0);
         settingsPanel.add(connectionsSlider, gridBagConstraints);
@@ -588,7 +594,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         jLabel2.setText("Set connections treshold");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 23;
+        gridBagConstraints.gridy = 26;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
         settingsPanel.add(jLabel2, gridBagConstraints);
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -599,7 +605,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         settingsPanel.add(jSeparator2, gridBagConstraints);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 15;
+        gridBagConstraints.gridy = 18;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(10, 0, 15, 0);
         settingsPanel.add(jSeparator4, gridBagConstraints);
@@ -623,14 +629,14 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 19;
+        gridBagConstraints.gridy = 22;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         settingsPanel.add(mintSlider, gridBagConstraints);
 
         jLabel4.setText("Set minting treshold");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 18;
+        gridBagConstraints.gridy = 21;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
         settingsPanel.add(jLabel4, gridBagConstraints);
 
@@ -644,7 +650,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 17;
+        gridBagConstraints.gridy = 20;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(mintGainedBox, gridBagConstraints);
 
@@ -658,7 +664,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 16;
+        gridBagConstraints.gridy = 19;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(mintLostBox, gridBagConstraints);
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -677,13 +683,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         settingsPanel.add(jLabel5, gridBagConstraints);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 10;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.insets = new java.awt.Insets(10, 0, 15, 0);
-        settingsPanel.add(jSeparator9, gridBagConstraints);
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 20;
+        gridBagConstraints.gridy = 23;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(10, 0, 15, 0);
         settingsPanel.add(jSeparator3, gridBagConstraints);
@@ -746,6 +746,43 @@ public class NotificationsPanel extends javax.swing.JPanel
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 10, 0);
         settingsPanel.add(emailLimitHintLabel, gridBagConstraints);
+
+        restartCoreCheckbox.setText("Try to restart the Qoral core when it goes offline");
+        restartCoreCheckbox.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                restartCoreCheckboxActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 11;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
+        settingsPanel.add(restartCoreCheckbox, gridBagConstraints);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 13;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(10, 0, 15, 0);
+        settingsPanel.add(jSeparator10, gridBagConstraints);
+
+        setScriptButton.setText("Set start script filepath");
+        setScriptButton.setMaximumSize(new java.awt.Dimension(200, 27));
+        setScriptButton.setMinimumSize(new java.awt.Dimension(200, 27));
+        setScriptButton.setPreferredSize(new java.awt.Dimension(200, 27));
+        setScriptButton.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                setScriptButtonActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 12;
+        settingsPanel.add(setScriptButton, gridBagConstraints);
 
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
@@ -1367,6 +1404,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         notifier.offlineEnabled = offlineBox.isSelected();
         Utilities.updateSetting("offlineEnabled", String.valueOf(offlineBox.isSelected()),"notifications.json");
         checkToggle(offlineBox, onlineBox, "onlineEnabled");
+        checkToggle(offlineBox, restartCoreCheckbox, "restartCoreEnabled");
     }//GEN-LAST:event_offlineBoxActionPerformed
 
     private void syncSliderStateChanged(javax.swing.event.ChangeEvent evt)//GEN-FIRST:event_syncSliderStateChanged
@@ -1570,6 +1608,75 @@ public class NotificationsPanel extends javax.swing.JPanel
         Utilities.updateSetting("runInBackground", String.valueOf(inBackgroundBox.isSelected()),"notifications.json");
     }//GEN-LAST:event_inBackgroundBoxActionPerformed
 
+    private void restartCoreCheckboxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_restartCoreCheckboxActionPerformed
+    {//GEN-HEADEREND:event_restartCoreCheckboxActionPerformed
+        notifier.restartCoreEnabled = restartCoreCheckbox.isSelected();
+        Utilities.updateSetting("restartCoreEnabled", String.valueOf(restartCoreCheckbox.isSelected()),"notifications.json");
+    }//GEN-LAST:event_restartCoreCheckboxActionPerformed
+
+    private void setScriptButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_setScriptButtonActionPerformed
+    {//GEN-HEADEREND:event_setScriptButtonActionPerformed
+        JOptionPane.showMessageDialog(this, Utilities.AllignCenterHTML(
+                "You will now be asked to provide the file path to your Qortal startup file<br/>"
+            + "'Qortal.exe' for Windows users, 'start.sh' for Mac and Linux users<br/>"
+            + "This file can be found in your main qortal folder<br/><br/>"
+            + "Please note that this function only works if you are running<br>"
+            + "Node Monitor on the same system as your Qortal core"));
+        
+        String os = System.getProperty("os.name").toLowerCase();
+ 
+          boolean isWindows;
+          if(os.contains("win"))
+              isWindows = true;
+          else if (os.contains("nix") || os.contains("nux") || os.contains("aix") || os.contains("mac"))
+            isWindows = false;
+          else
+          {
+              JOptionPane.showMessageDialog(this, "Incompatible Operating System : " + os);
+              return;
+          }
+        
+        JFileChooser jfc = new JFileChooser(System.getProperty("user.home"));
+        
+        FileNameExtensionFilter filter;
+        if(isWindows)
+            filter = new FileNameExtensionFilter("Select the Qortal startup file (Qortal.exe)", "exe");
+        else
+            filter = new FileNameExtensionFilter("Select the Qortal startup script (start.sh)", "sh");
+            
+        //        jfc.setSelectedFile(new File("properties.mv.db")); //show preferred filename in filechooser
+        // add filters
+        jfc.setAcceptAllFileFilterUsed(false);
+        jfc.addChoosableFileFilter(filter);
+        jfc.setFileFilter(filter);
+        int returnValue = jfc.showOpenDialog(null);
+
+        if (returnValue == JFileChooser.APPROVE_OPTION)
+        {            
+            File selectedFile = jfc.getSelectedFile();               
+            
+            if(isWindows)
+            {
+                if(!selectedFile.getName().equals("Qortal.exe"))
+                {
+                    JOptionPane.showMessageDialog(this, "Invalid file, filename must be named 'Qortal.exe'");
+                    return;
+                }                
+            }
+            else
+            {
+                if(!selectedFile.getName().equals("start.sh"))
+                {
+                    JOptionPane.showMessageDialog(this, "Invalid file, filename must be named 'start.sh'");
+                    return;
+                }                
+            }
+            
+            Utilities.updateSetting("startScriptPath", selectedFile.getPath(), "notifications.json");
+            JOptionPane.showMessageDialog(this, "Qortal start up file path was set:\n" + selectedFile.getPath());            
+        }
+    }//GEN-LAST:event_setScriptButtonActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPasswordField appPasswordField;
@@ -1599,6 +1706,7 @@ public class NotificationsPanel extends javax.swing.JPanel
     private javax.swing.JLabel jLabel6;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JSeparator jSeparator10;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
@@ -1606,7 +1714,6 @@ public class NotificationsPanel extends javax.swing.JPanel
     private javax.swing.JSeparator jSeparator6;
     private javax.swing.JSeparator jSeparator7;
     private javax.swing.JSeparator jSeparator8;
-    private javax.swing.JSeparator jSeparator9;
     private javax.swing.JSplitPane jSplitPane1;
     private javax.swing.JButton loginButton;
     private javax.swing.JPanel loginPanel;
@@ -1627,7 +1734,9 @@ public class NotificationsPanel extends javax.swing.JPanel
     private javax.swing.JCheckBox receivedMailCheckbox;
     private javax.swing.JTextField recipientInput;
     private javax.swing.JLabel recipientLabel;
+    protected javax.swing.JCheckBox restartCoreCheckbox;
     private javax.swing.JButton saveMailServerButton;
+    private javax.swing.JButton setScriptButton;
     private javax.swing.JLabel settingsHintLabel;
     private javax.swing.JPanel settingsPanel;
     private javax.swing.JScrollPane settingsScrollPane;
