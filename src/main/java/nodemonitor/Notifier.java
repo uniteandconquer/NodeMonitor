@@ -1374,12 +1374,12 @@ public class Notifier
     {  
         Thread thread = new Thread(()->
         {
-            Object filePathObject = Utilities.getSetting("startScriptPath", "settings.json");
+            Object filePathObject = Utilities.getSetting("startScriptPath", "notifications.json");
             if(filePathObject == null)
             {
                 poolAlert("Could not restart Qortal core", 
-                        "Node Monitor failed to fetch the file path for your Qortal start script ('start.sh')\n\n"
-                    + "Please set the file path for your Qortal start script through the notifications settings in "
+                        "Node Monitor failed to fetch the file path for your Qortal start up file\n\n"
+                    + "Please set the file path for your Qortal start up file through the notifications settings in "
                                 + "the UI, or through the CLI terminal.", System.currentTimeMillis());    
 
                 BackgroundService.AppendLog("Failed to fetch start script file path from settings.json");
