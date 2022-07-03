@@ -914,7 +914,7 @@ public class Utilities
         return null;
     }
     
-    public static void updateSetting(String key, String value,String filename)
+    public static void updateSetting(String key, Object value,String filename)
     {        
         File settingsFile = new File(System.getProperty("user.dir") + "/bin/" + filename);
         if(!settingsFile.exists())

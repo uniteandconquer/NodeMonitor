@@ -63,7 +63,8 @@ public class MonitorPanel extends javax.swing.JPanel
     protected String blockChainFolder;
     protected String dataFolder;
     private boolean mintingChecked = false;
-    private int mintingAccount = 0;
+    private boolean switchingAccount = false;
+    private int mintingAccountIndex = 0;
     private final int[] levels = { 0, 7200, 72000 , 201600 , 374400 ,618400 , 
         964000 , 1482400 , 2173600 , 3037600 , 4074400 };
     protected static int fontSize = 14;
@@ -164,6 +165,15 @@ public class MonitorPanel extends javax.swing.JPanel
                 if(jsonString != null)
                 {
                     JSONObject jsonObject = new JSONObject(jsonString); 
+                    
+                    if(!jsonObject.has("blocksMintedEnd") || !jsonObject.has("blocksMintedStart") ||
+                            !jsonObject.has("snapshotStart") || !jsonObject.has("snapshotEnd"))
+                    {
+                        Utilities.updateSetting("snapshotStart", System.currentTimeMillis(), "settings.json");
+                        Utilities.updateSetting("snapshotEnd", System.currentTimeMillis(), "settings.json");
+                        Utilities.updateSetting("blocksMintedStart", blocksMinted, "settings.json");
+                        Utilities.updateSetting("blocksMintedEnd", blocksMinted, "settings.json");
+                    }
                     
                     boolean newAccountFound = true;
                     
@@ -534,7 +544,7 @@ public class MonitorPanel extends javax.swing.JPanel
                 //only expand tree if status switched from offline to online, expand before setting coreOnline to true
                 if(!coreOnline)
                     gui.ExpandTree(monitorTree, 1);
-                coreOnline = true;          
+                coreOnline = true;      
                 if(priceButtonReady)
                     pricesButton.setEnabled(true);
                 
@@ -577,10 +587,19 @@ public class MonitorPanel extends javax.swing.JPanel
                 //If there's no minting account set we'll get a nullpointer exception
                 if(jSONArray.length() > 0)
                 { 
-                    if(jSONArray.length() > 1 && !mintingChecked)
-                        SetMintingAccount(jSONArray);
+                    if(jSONArray.length() > 1)
+                    {
+                        switchAccountButton.setVisible(true);
+                        
+                        if(!mintingChecked)
+                            SetMintingAccount(jSONArray);
+                        
+                        switchAccountButton.setEnabled(true);
+                    }
+                    else
+                        switchAccountButton.setVisible(false);
                     
-                    jSONObject = jSONArray.getJSONObject(mintingAccount);
+                    jSONObject = jSONArray.getJSONObject(mintingAccountIndex);
                     myMintingAddress = jSONObject.getString("mintingAccount");
                     myBalance =  Double.parseDouble(Utilities.ReadStringFromURL("http://" + gui.dbManager.socket + "/addresses/balance/" + myMintingAddress));
                     jsonString = Utilities.ReadStringFromURL("http://" + gui.dbManager.socket + "/addresses/" + myMintingAddress);
@@ -777,6 +796,7 @@ public class MonitorPanel extends javax.swing.JPanel
             {
                 coreOnline = false;
                 pricesButton.setEnabled(false);
+                switchAccountButton.setEnabled(false);
                 NodeInfo nodeInfo = (NodeInfo) statusNode.getUserObject();
                 nodeInfo.nodeName = Utilities.AllignCenterHTML(Main.BUNDLE.getString("cannotConnectMp"));
                 monitorTreeModel.valueForPathChanged(new TreePath(statusNode.getPath()),nodeInfo);   
@@ -804,8 +824,11 @@ public class MonitorPanel extends javax.swing.JPanel
         String activeAccount = null;
        
         //First check if a minting account is saved in settings.json
-        String savedAccount = (String)Utilities.getSetting("mintingAccount","settings.json");
-        if(savedAccount != null)
+        String savedAccount = switchingAccount ? "" : (String)Utilities.getSetting("mintingAccount","settings.json");     
+        
+        switchingAccount = false;
+        
+        if(savedAccount != null && !savedAccount.isBlank())
         {
             try
             {
@@ -839,7 +862,7 @@ public class MonitorPanel extends javax.swing.JPanel
             activeAccount = (String) JOptionPane.showInputDialog(this,
                     Utilities.AllignCenterHTML(Main.BUNDLE.getString("multipleAccounts")),
                     Main.BUNDLE.getString("multipleAccountTitle"), JOptionPane.QUESTION_MESSAGE, null, accounts, accounts[0]);             
-        }
+        }        
         
         //set the index at which the active minting account will be found in the json array API result
         //the actual minting address will be set in the refresh node labels and save in getMintingInfoStrings
@@ -848,7 +871,13 @@ public class MonitorPanel extends javax.swing.JPanel
             JSONObject jso = jsonArray.getJSONObject(i);
             if(jso.getString("mintingAccount").equals(activeAccount))
             {
-                mintingAccount = i;     
+                String currentMintingAccount = Utilities.getSetting("mintingAccount", "settings.json").toString();                
+                if(currentMintingAccount != null && !currentMintingAccount.equals(activeAccount))
+                    resetMintingRateBtnActionPerformed(null);
+                
+                mintingAccountIndex = i;   
+                Utilities.updateSetting("mintingAccount", activeAccount, "settings.json");
+                RestartTimer();
                 break;
             }
         }        
@@ -957,11 +986,13 @@ public class MonitorPanel extends javax.swing.JPanel
         refreshButton = new javax.swing.JButton();
         pingLabel = new javax.swing.JLabel();
         pricesButton = new javax.swing.JButton();
-        setQortalFolder = new javax.swing.JButton();
+        setDataFolderButton = new javax.swing.JButton();
         resetMintingRateBtn = new javax.swing.JButton();
         refreshLabel = new javax.swing.JLabel();
         fontsizeSlider = new javax.swing.JSlider();
         jLabel1 = new javax.swing.JLabel();
+        switchAccountButton = new javax.swing.JButton();
+        switchAccountButton.setVisible(false);
 
         monitorPanel.setLayout(new java.awt.GridBagLayout());
 
@@ -972,7 +1003,7 @@ public class MonitorPanel extends javax.swing.JPanel
 
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 2;
+        gridBagConstraints.gridy = 3;
         gridBagConstraints.gridwidth = 3;
         gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
@@ -1026,15 +1057,15 @@ public class MonitorPanel extends javax.swing.JPanel
         gridBagConstraints.insets = new java.awt.Insets(1, 1, 1, 1);
         monitorPanel.add(pricesButton, gridBagConstraints);
 
-        setQortalFolder.setText("Set Qortal folder");
-        setQortalFolder.setMaximumSize(new java.awt.Dimension(150, 27));
-        setQortalFolder.setMinimumSize(new java.awt.Dimension(150, 27));
-        setQortalFolder.setPreferredSize(new java.awt.Dimension(150, 27));
-        setQortalFolder.addActionListener(new java.awt.event.ActionListener()
+        setDataFolderButton.setText("Set data folder");
+        setDataFolderButton.setMaximumSize(new java.awt.Dimension(150, 27));
+        setDataFolderButton.setMinimumSize(new java.awt.Dimension(150, 27));
+        setDataFolderButton.setPreferredSize(new java.awt.Dimension(150, 27));
+        setDataFolderButton.addActionListener(new java.awt.event.ActionListener()
         {
             public void actionPerformed(java.awt.event.ActionEvent evt)
             {
-                setQortalFolderActionPerformed(evt);
+                setDataFolderButtonActionPerformed(evt);
             }
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -1042,7 +1073,7 @@ public class MonitorPanel extends javax.swing.JPanel
         gridBagConstraints.gridy = 1;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
         gridBagConstraints.insets = new java.awt.Insets(1, 1, 1, 1);
-        monitorPanel.add(setQortalFolder, gridBagConstraints);
+        monitorPanel.add(setDataFolderButton, gridBagConstraints);
 
         resetMintingRateBtn.setText("Reset minting rate");
         resetMintingRateBtn.setMaximumSize(new java.awt.Dimension(150, 27));
@@ -1082,7 +1113,7 @@ public class MonitorPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 3;
+        gridBagConstraints.gridy = 4;
         gridBagConstraints.gridwidth = 3;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(5, 80, 5, 20);
@@ -1091,10 +1122,30 @@ public class MonitorPanel extends javax.swing.JPanel
         jLabel1.setText("Font size:");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 3;
+        gridBagConstraints.gridy = 4;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
         monitorPanel.add(jLabel1, gridBagConstraints);
+
+        switchAccountButton.setText("Switch active minting account");
+        switchAccountButton.setEnabled(false);
+        switchAccountButton.setMaximumSize(new java.awt.Dimension(302, 27));
+        switchAccountButton.setMinimumSize(new java.awt.Dimension(302, 27));
+        switchAccountButton.setPreferredSize(new java.awt.Dimension(302, 27));
+        switchAccountButton.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                switchAccountButtonActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.gridwidth = 2;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(1, 1, 1, 1);
+        monitorPanel.add(switchAccountButton, gridBagConstraints);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -1273,8 +1324,8 @@ public class MonitorPanel extends javax.swing.JPanel
         thread.start();
     }//GEN-LAST:event_pricesButtonActionPerformed
 
-    private void setQortalFolderActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_setQortalFolderActionPerformed
-    {//GEN-HEADEREND:event_setQortalFolderActionPerformed
+    private void setDataFolderButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_setDataFolderButtonActionPerformed
+    {//GEN-HEADEREND:event_setDataFolderButtonActionPerformed
         JOptionPane.showMessageDialog(this, Utilities.AllignCenterHTML(
                     "If you're running this app on the same system as your<br/>"
                 + " Qortal core you can set the location of the Qortal folder<br/>"
@@ -1336,47 +1387,48 @@ public class MonitorPanel extends javax.swing.JPanel
                 }
             }
         }
-    }//GEN-LAST:event_setQortalFolderActionPerformed
+    }//GEN-LAST:event_setDataFolderButtonActionPerformed
 
     private void resetMintingRateBtnActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_resetMintingRateBtnActionPerformed
     {//GEN-HEADEREND:event_resetMintingRateBtnActionPerformed
-       File settingsFile = new File(System.getProperty("user.dir") + "/bin/settings.json");
-        if(settingsFile.exists())
-        {
-            try
+        File settingsFile = new File(System.getProperty("user.dir") + "/bin/settings.json");
+       if(settingsFile.exists())
+       {
+           try
+           {
+               String jsonString = Files.readString(settingsFile.toPath());
+               if(jsonString != null)
+               {
+                   //We remove the values here, cause we can't be sure that the core is online when this is called\
+                   //The values will be set in getMintingInfoStrings if they do not exist
+                   JSONObject jsonObject = new JSONObject(jsonString); 
+                   jsonObject.remove("blocksMintedStart");
+                   jsonObject.remove("blocksMintedEnd");
+                   jsonObject.remove("snapshotStart");
+                   jsonObject.remove("snapshotEnd");                    
+
+                   try (BufferedWriter writer = new BufferedWriter(new FileWriter(settingsFile)))
+                   {
+                       writer.write(jsonObject.toString(1));
+                       writer.close();
+                   }  
+
+                   String text = "Not enough blocks minted data, please wait...";
+                   NodeInfo nodeInfo = (NodeInfo) mintedSessionNode.getUserObject();
+                   nodeInfo.nodeName = text;
+                   monitorTreeModel.valueForPathChanged(new TreePath(mintedSessionNode.getPath()),nodeInfo); 
+                   nodeInfo = (NodeInfo) mintingRateNode.getUserObject();
+                   nodeInfo.nodeName = text;
+                   monitorTreeModel.valueForPathChanged(new TreePath(mintingRateNode.getPath()),nodeInfo); 
+                   nodeInfo = (NodeInfo) levellingNode.getUserObject();
+                   nodeInfo.nodeName = text;
+                   monitorTreeModel.valueForPathChanged(new TreePath(levellingNode.getPath()),nodeInfo);              
+               }                
+            }
+            catch (IOException | JSONException e)
             {
-                String jsonString = Files.readString(settingsFile.toPath());
-                if(jsonString != null)
-                {
-                    JSONObject jsonObject = new JSONObject(jsonString); 
-                    jsonObject.remove("mintingAccount");
-                    jsonObject.remove("blocksMintedStart");
-                    jsonObject.remove("blocksMintedEnd");
-                    jsonObject.remove("snapshotStart");
-                    jsonObject.remove("snapshotEnd");                    
-                    
-                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(settingsFile)))
-                    {
-                        writer.write(jsonObject.toString(1));
-                        writer.close();
-                    }  
-                    
-                    String text = "Not enough blocks minted data, please wait...";
-                    NodeInfo nodeInfo = (NodeInfo) mintedSessionNode.getUserObject();
-                    nodeInfo.nodeName = text;
-                    monitorTreeModel.valueForPathChanged(new TreePath(mintedSessionNode.getPath()),nodeInfo); 
-                    nodeInfo = (NodeInfo) mintingRateNode.getUserObject();
-                    nodeInfo.nodeName = text;
-                    monitorTreeModel.valueForPathChanged(new TreePath(mintingRateNode.getPath()),nodeInfo); 
-                    nodeInfo = (NodeInfo) levellingNode.getUserObject();
-                    nodeInfo.nodeName = text;
-                    monitorTreeModel.valueForPathChanged(new TreePath(levellingNode.getPath()),nodeInfo);              
-                }                
-                }
-                catch (IOException | JSONException e)
-                {
-                    BackgroundService.AppendLog(e);
-                }
+                BackgroundService.AppendLog(e);
+            }
         }
     }//GEN-LAST:event_resetMintingRateBtnActionPerformed
 
@@ -1387,6 +1439,15 @@ public class MonitorPanel extends javax.swing.JPanel
         
         monitorTree.setFont(new Font(monitorTree.getFont().getName(), Font.PLAIN, fontSize));        
     }//GEN-LAST:event_fontsizeSliderMouseReleased
+
+    private void switchAccountButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_switchAccountButtonActionPerformed
+    {//GEN-HEADEREND:event_switchAccountButtonActionPerformed
+        mintingChecked = false;
+        switchingAccount = true;
+//        Utilities.updateSetting("mintingAccount", "", "settings.json");
+        switchAccountButton.setEnabled(false);
+        RestartTimer();
+    }//GEN-LAST:event_switchAccountButtonActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -1400,6 +1461,7 @@ public class MonitorPanel extends javax.swing.JPanel
     private javax.swing.JButton refreshButton;
     private javax.swing.JLabel refreshLabel;
     private javax.swing.JButton resetMintingRateBtn;
-    private javax.swing.JButton setQortalFolder;
+    private javax.swing.JButton setDataFolderButton;
+    private javax.swing.JButton switchAccountButton;
     // End of variables declaration//GEN-END:variables
 }

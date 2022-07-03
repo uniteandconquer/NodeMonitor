@@ -23,12 +23,17 @@ import javax.swing.JOptionPane;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import oshi.SystemInfo;
+import oshi.software.os.OSProcess;
 
 public class Notifier
 {    
+    SystemInfo systemInfo = new SystemInfo();
+    
     protected boolean runInBackground;
     protected boolean emailEnabled;
     protected boolean emailLimitEnabled;
+    protected boolean limitDisregardEnabled;    
     protected boolean inAppEnabled;    
     protected boolean syncLostEnabled;
     protected boolean syncGainedEnabled;
@@ -39,9 +44,16 @@ public class Notifier
     protected boolean offlineEnabled;
     protected boolean onlineEnabled;
     protected boolean restartCoreEnabled;
+    protected boolean restartBySyncEnabled;
+    protected boolean restartByMintEnabled;
+    protected boolean restartByConnectionsEnabled;    
     protected int syncThreshold = 15;
     protected int connectThreshold = 5;
     protected int mintThreshold = 15;
+    protected int restartTimeThreshold = 1;
+    private long restartRetryTime = 900000;
+    //should be 3600000 (1 hour), change for de-bugging
+    private long restartTimeUnit = 3600000;
     protected int emailLimit = 15;    
     
     private boolean wasOffline;
@@ -52,17 +64,17 @@ public class Notifier
     private boolean hadLostConnections;
     private boolean wasMinting;
     private boolean hasStoppedMinting;
+    private long stoppedMintingTime;
+    private boolean mintingHaltedSent;   
+    private boolean connectLostSent;   
+    private boolean syncLostSent;   
+    private int lastBlocksMinted;  
     
     private int myBlockHeight;
     private int chainHeight;
     private int numberOfConnections;
     
     private String mintingAccount;
-    private int lastBlocksMinted;
-    private long stoppedMintingTime;
-    private boolean mintingHaltedSent;   
-    private boolean connectLostSent;   
-    private boolean syncLostSent;    
         
     private DatabaseManager dbManager;
     private GUI gui;
@@ -78,6 +90,12 @@ public class Notifier
     protected String appPw = "";
     
     protected boolean isSending;
+    
+    private boolean restartInProgress;
+    private long lastRestartTime;
+    private long syncAlertTime;
+    private long mintAlertTime;
+    private long connectionsAlertTime;
     
     public Notifier(DatabaseManager dbManager,GUI gui, boolean isDaemon)
     {
@@ -105,8 +123,7 @@ public class Notifier
             if(gui == null)
                 showConsoleMenu();
             //if gui is not null, the notifier will get started by the notificationspanel after setEmailPanel()
-        }
-        
+        }        
     }
     
     private void attemptLogin()
@@ -173,19 +190,25 @@ public class Notifier
                 if(jsonObject.has("inAppEnabled"))
                     inAppEnabled = Boolean.parseBoolean(jsonObject.getString("inAppEnabled"));     
                 if(jsonObject.has("emailEnabled"))
-                    emailEnabled = Boolean.parseBoolean(jsonObject.getString("emailEnabled"));              
+                    emailEnabled = Boolean.parseBoolean(jsonObject.getString("emailEnabled"));    
                 if(jsonObject.has("syncLostEnabled"))
                     syncLostEnabled = Boolean.parseBoolean(jsonObject.getString("syncLostEnabled"));             
                 if(jsonObject.has("syncGainedEnabled"))
-                    syncGainedEnabled = Boolean.parseBoolean(jsonObject.getString("syncGainedEnabled"));              
+                    syncGainedEnabled = Boolean.parseBoolean(jsonObject.getString("syncGainedEnabled"));       
+                if(jsonObject.has("restartBySyncEnabled"))
+                    restartBySyncEnabled = Boolean.parseBoolean(jsonObject.getString("restartBySyncEnabled"));           
                 if(jsonObject.has("connectLostEnabled"))
                     connectLostEnabled =  Boolean.parseBoolean(jsonObject.getString("connectLostEnabled"));             
                 if(jsonObject.has("connectGainedEnabled"))
-                    connectGainedEnabled = Boolean.parseBoolean(jsonObject.getString("connectGainedEnabled"));       
+                    connectGainedEnabled = Boolean.parseBoolean(jsonObject.getString("connectGainedEnabled")); 
+                if(jsonObject.has("restartByConnectionsEnabled"))
+                    restartByConnectionsEnabled = Boolean.parseBoolean(jsonObject.getString("restartByConnectionsEnabled"));         
                 if(jsonObject.has("mintLostEnabled"))
                     mintLostEnabled =  Boolean.parseBoolean(jsonObject.getString("mintLostEnabled"));            
                 if(jsonObject.has("mintGainedEnabled"))
-                    mintGainedEnabled = Boolean.parseBoolean(jsonObject.getString("mintGainedEnabled"));          
+                    mintGainedEnabled = Boolean.parseBoolean(jsonObject.getString("mintGainedEnabled"));   
+                if(jsonObject.has("restartByMintEnabled"))
+                    restartByMintEnabled = Boolean.parseBoolean(jsonObject.getString("restartByMintEnabled"));         
                 if(jsonObject.has("offlineEnabled"))
                     offlineEnabled = Boolean.parseBoolean(jsonObject.getString("offlineEnabled"));          
                 if(jsonObject.has("onlineEnabled"))
@@ -194,6 +217,8 @@ public class Notifier
                     restartCoreEnabled = Boolean.parseBoolean(jsonObject.getString("restartCoreEnabled"));            
                 if(jsonObject.has("emailLimitEnabled"))
                     emailLimitEnabled = Boolean.parseBoolean(jsonObject.getString("emailLimitEnabled")); 
+                if(jsonObject.has("limitDisregardEnabled"))
+                    limitDisregardEnabled = Boolean.parseBoolean(jsonObject.getString("limitDisregardEnabled")); 
                 if(jsonObject.has("syncThreshold"))
                 {
                     syncThreshold = Integer.parseInt(jsonObject.getString("syncThreshold"));
@@ -217,6 +242,12 @@ public class Notifier
                     emailLimit = Integer.parseInt(jsonObject.getString("emailLimit"));
                     emailLimit = emailLimit < 5 ? 5 : emailLimit;                    
                     emailLimit = emailLimit > 100 ? 100 : emailLimit;
+                }
+                if(jsonObject.has("restartTimeThreshold"))
+                {
+                    restartTimeThreshold = Integer.parseInt(jsonObject.getString("restartTimeThreshold"));
+                    restartTimeThreshold = restartTimeThreshold < 1 ? 1 : restartTimeThreshold;                    
+                    restartTimeThreshold = restartTimeThreshold > 24 ? 24 : restartTimeThreshold;
                 }
             }                
         }
@@ -508,6 +539,73 @@ public class Notifier
      
      private void setupNotifications(Scanner scanner)
      {
+         boolean showRestartOptions = false;
+         
+          int choice = getChoice("\nNode Monitor can attempt to stop and start your Qortal core when certain events are triggered.\n"
+                + "For example, when your node goes out of sync and then doesn't re-sync for a specified amount of time.\n\n"
+                + "If you enable this function, Node Monitor will be stopping and starting your Qortal core. It is therefore important \n"
+                + "to make sure your settings do not get triggered too often by adjusting them to your circumstances.\n"
+                + "You'll have to tell Node Monitor where your Qortal folder is in order to use this functionality.\n"
+                + "Do you want to enable restarts?", scanner);
+            
+        if(choice == 1)
+        {
+            System.out.println("\nThe default filepath for Raspberry Pi users is usually /home/pi/qortal\n\n"
+                    + "If your username is not 'pi' try /home/{your user name}/qortal\n");
+
+            String filePath = getScriptFilePath(scanner);
+            if(filePath.isBlank())
+                showRestartOptions = false;
+            else
+            {
+                File qortalStartScript = new File(System.getProperty("user.dir") + "/bin/start-qortal.sh");
+                File qortalStopScript = new File(System.getProperty("user.dir") + "/bin/stop-qortal.sh");
+
+                try(BufferedWriter writer = new BufferedWriter(new FileWriter(qortalStartScript)))
+                {
+                    String command = "cd " + filePath + " && ./start.sh"; 
+                    writer.write(command);
+
+                    try(BufferedWriter writer2 = new BufferedWriter(new FileWriter(qortalStopScript)))
+                    {                        
+                        command = "cd " + filePath + " && ./stop.sh"; 
+                       writer2.write(command);
+                    }
+
+                    System.out.println("\n\nSuccess! Qortal folder path was set:\n" + filePath + "\n\n"
+                            + "PLEASE MAKE SURE THAT THE  'start-qortal.sh' AND 'stop-qortal.sh' FILES IN THE\n"
+                            + "'node-monitor/bin' FOLDER ARE EXECUTABLE!!\n\n" + System.getProperty("user.dir") + "/start-qortal.sh\n"
+                            + System.getProperty("user.dir") + "/start-qortal.sh\n\n"
+                            + "These scripts will be executed when the settings that you'll set up next get triggered.\n");     
+
+                    //Linux and Mac version will only use this key to know if folder was set, the actual start/stop scripts
+                    //will be created in the node-monitor/bin folder
+                    Utilities.updateSetting("startScriptPath", filePath, "notifications.json");
+                    showRestartOptions = true;
+                    
+                    choice = getChoice(
+                        "The restart time threshold determines the time duration between when an event gets\n"
+                    + "triggered and when a restart attempt is made (between 1 and 24 hours). It also limits the\n"
+                    + "time interval between core shutdowns, a triggered shutdown will be blocked if it occurs \n"
+                    + "within this duration of the last shutdown.\n\n"
+                    + "Example: If your node has lost sync and has not gone back in sync for an hour, the Qortal core will be stopped\n"
+                    + "and then restarted (if a restart has occured less than an hour ago the core will not be stopped and started).\n"
+                    + "You will receive a notification either way.\n\n"
+                    + "Please enter a restart time threshold (between 1 and 24 hours):", scanner, 1, 24);
+                    
+                    restartTimeThreshold = choice;
+
+                }
+                catch (IOException e)
+                {
+                    System.out.println("\n\nAn error occured, could not create scripts: \n" + e.toString() + "\n"
+                            + "Could not create 'start-qortal.sh' and/or 'stop-qortal.sh' script"); 
+                    showRestartOptions = false;
+                    BackgroundService.AppendLog(e);
+                }                
+            }                  
+        }
+         
          System.out.println(
                  "Dependent on your notifications settings, it is possible that Node Monitor will send you a large number\n"
                 + "of e-mail notifications. To avoid your inbox getting overwhelmed with notifications you can set a limit for\n"
@@ -515,13 +613,22 @@ public class Notifier
                 + "If you're receiving too many notifications you can try tweaking your notifications settings by enabling or disabling\n"
                 + "certain notifications or by increasing or decreasing the threshold at which a notification will be sent.\n");
                   
-         int choice = getChoice("Set the maximum number of e-mails per day (minimum 5, maximum 100):", scanner,5,100);
+         choice = getChoice("Set the maximum number of e-mails per day (minimum 5, maximum 100):", scanner,5,100);
          emailLimit = choice;
          Utilities.updateSetting("emailLimit", String.valueOf(emailLimit), "notifications.json");
          
          choice = getChoice("Enable e-mail limit?:", scanner);
          emailLimitEnabled = choice == 1;
          Utilities.updateSetting("emailLimitEnabled", String.valueOf(emailLimitEnabled), "notifications.json");
+         
+         choice = getChoice(
+                 "You can opt to disregard the e-mail limit for Qortal core restarts,in which case e-mail notifications\n"
+                + "will always be sent when the Qortal core is stopped or started by Node Monitor, even if the\n"
+                + "e-mail limit has been reached.\n"
+                + "Do you want to disregard the e-mail limit for Qortal core restarts?", scanner);
+         limitDisregardEnabled = choice == 1;
+         Utilities.updateSetting("limitDisregardEnabled", String.valueOf(limitDisregardEnabled), "notifications.json");
+         
          
          choice = getChoice("Send an e-mail when my node goes offline:", scanner);
          offlineEnabled = choice == 1;
@@ -530,50 +637,16 @@ public class Notifier
          if(offlineEnabled)
          {
             choice = getChoice("Send an e-mail when my node is back online:", scanner);         
-            onlineEnabled = choice == 1;      
+            onlineEnabled = choice == 1;   
             
-            choice = getChoice("Try to restart the Qortal core when my node goes offline:", scanner);
-            restartCoreEnabled = choice == 1;
-            
-            if(restartCoreEnabled)
+            if(showRestartOptions)
             {
-                System.err.println("\nThe default filepath for Raspberry Pi users is usually /home/pi/qortal\n\n"
-                        + "If your username is not 'pi' try /home/{your user name}/qortal\n");
-                String filePath = getScriptFilePath(scanner);
-                if(filePath.isBlank())
-                    restartCoreEnabled = false;
-                else
-                {
-                    File qortalStartScript = new File(System.getProperty("user.dir") + "/start-qortal.sh");
-                
-                    try(BufferedWriter writer = new BufferedWriter(new FileWriter(qortalStartScript)))
-                    {
-                        String command = "cd " + filePath + " && ./start.sh"; 
-                        writer.write(command);
-                        writer.close();     
-
-                        System.out.println("\n\nSuccess! Qortal folder path was set:\n" + filePath + "\n\n"
-                                + "PLEASE MAKE SURE THAT THE  'start-qortal.sh' FILE IN THE\n"
-                                + "'node-monitor' FOLDER IS EXECUTABLE!!\n\n" + System.getProperty("user.dir") + "/start-qortal.sh\n\n"
-                                        + "This script will be executed when Node Monitor detects that your node has gone offline\n");     
-                        
-                        Utilities.updateSetting("startScriptPath", System.getProperty("user.dir") + "/start-qortal.sh", "notifications.json");  
-                        
-                    }
-                    catch (IOException e)
-                    {
-                        System.out.println("\n\nAn error occured, could not set start up file : \n" + e.toString() + "\n"
-                                + "Could not create 'start-qortal.sh' script"); 
-                        BackgroundService.AppendLog(e);
-                    }                
-                }                    
-            }
+                choice = getChoice("Try to restart the Qortal core when my node goes offline:", scanner);
+                restartCoreEnabled = choice == 1;                
+            }                
          }
          else
-         {
              onlineEnabled = false;
-             restartCoreEnabled = false;
-         }
          Utilities.updateSetting("onlineEnabled", String.valueOf(onlineEnabled), "notifications.json");
          Utilities.updateSetting("restartCoreEnabled", String.valueOf(restartCoreEnabled), "notifications.json");
          
@@ -588,11 +661,20 @@ public class Notifier
             
             choice = getChoice("Out of sync threshold (minimum 5 blocks, maximum 100 blocks)", scanner,5,100);
             syncThreshold = choice;
-            Utilities.updateSetting("syncThreshold", String.valueOf(syncThreshold), "notifications.json");     
+            Utilities.updateSetting("syncThreshold", String.valueOf(syncThreshold), "notifications.json");   
          }
          else
              syncGainedEnabled = false;
          Utilities.updateSetting("syncGainedEnabled", String.valueOf(syncGainedEnabled), "notifications.json");
+         
+        //Must be done last, the gainedEnabled could have defaulted to false
+        if(showRestartOptions && syncGainedEnabled)
+        {
+            choice = getChoice("Should Node Monitor try to stop and then start the Qortal core if your\n"
+                    + "node has not been in sync for " + restartTimeThreshold + " hours?", scanner);
+            restartBySyncEnabled = choice == 1;
+            Utilities.updateSetting("restartBySyncEnabled", String.valueOf(restartBySyncEnabled), "notifications.json");  
+        }
          
          choice = getChoice("Send an e-mail when my node stops minting:", scanner);
          mintLostEnabled = choice == 1;
@@ -611,6 +693,15 @@ public class Notifier
              mintGainedEnabled = false;
          Utilities.updateSetting("mintGainedEnabled", String.valueOf(mintGainedEnabled), "notifications.json");
          
+        //Must be done last, the gainedEnabled could have defaulted to false
+        if(showRestartOptions && mintGainedEnabled)
+        {
+            choice = getChoice("Should Node Monitor try to stop and then start the Qortal core if your\n"
+                    + "node has not been minting for " + restartTimeThreshold + " hours?", scanner);
+            restartByMintEnabled = choice == 1;
+            Utilities.updateSetting("restartByMintEnabled", String.valueOf(restartByMintEnabled), "notifications.json");  
+        }
+         
          choice = getChoice("Send an e-mail when my node loses connections:", scanner);
          connectLostEnabled = choice == 1;
          Utilities.updateSetting("connectLostEnabled", String.valueOf(connectLostEnabled), "notifications.json");
@@ -627,6 +718,15 @@ public class Notifier
          else
              connectGainedEnabled = false;
          Utilities.updateSetting("connectGainedEnabled", String.valueOf(connectGainedEnabled), "notifications.json");
+         
+        //Must be done last, the gainedEnabled could have defaulted to false
+        if(showRestartOptions && connectGainedEnabled)
+        {
+            choice = getChoice("Should Node Monitor try to stop and then start the Qortal core if your node\n"
+                    + "has had less than " + connectThreshold + " connections for " + restartTimeThreshold + " hours?", scanner);
+            restartByConnectionsEnabled = choice == 1;
+            Utilities.updateSetting("restartByConnectionsEnabled", String.valueOf(restartByConnectionsEnabled), "notifications.json");  
+        }
          
          try
          {            
@@ -651,7 +751,7 @@ public class Notifier
                 }  
                 String question = "Choose your minting account:\n";                
                 for(int i = 0; i < accounts.length; i++)
-                    question += (i + 1) + "- " + accounts[i];
+                    question += (i + 1) + "- " + accounts[i] + "\n";
                 
                 choice = getChoice(question, scanner, 1, accounts.length);
                 mintingAccount = accounts[choice - 1];
@@ -743,7 +843,7 @@ public class Notifier
             }
             else
             {                        
-                choice = getChoice("Invalid folder : '" + filePath+  "' folder must be named 'qortal', try again?", scanner);
+                choice = getChoice("Invalid folder : '" + filePath +  "' folder must be named 'qortal', try again?", scanner);
                 if(choice == 1)
                     filePath = "";
                 else
@@ -752,7 +852,7 @@ public class Notifier
         }
         while (!filePath.endsWith("qortal"));
          
-        System.out.println("\nStartup script file path not set, restart core setting automatically set to false.\n");
+        System.out.println("\nStartup script file path not set, stop and start Qortal core function disabled.\n");
         return "";
      }
     
@@ -769,15 +869,7 @@ public class Notifier
             timer = new Timer();
         }
          
-         //these need to be true at start, they will trigger the code to 
-         //set the actual state through the API calls
-         wasSynced = true;
-         wasUnsynced = true;
-         hadGainedConnections = true;
-         hadLostConnections = true;
-         wasMinting = true;
-         hasStoppedMinting = true;
-         wasOnline = true;
+        resetTriggers();
          
          stoppedMintingTime = System.currentTimeMillis();   
          
@@ -793,7 +885,7 @@ public class Notifier
         {
             @Override
             public void run()
-            {  
+            {                  
                 String durationString = "Node Monitor notifier has been running for " + Utilities.MillisToDayHrMin((iterations * 60000));
 //                System.out.flush();
 //                System.out.print("\r");
@@ -819,14 +911,14 @@ public class Notifier
                 }
                 
                 try
-                {         
+                {                     
                     String jsonString = Utilities.ReadStringFromURL("http://" + dbManager.socket + "/admin/status");
                     wasOnline = true; 
-                    
+                
                     //will not be reached if can't ping API, error will be thrown
                     if(wasOffline && onlineEnabled)
                     {
-                        poolAlert("Node online", "Your Qortal node is back online.",System.currentTimeMillis());
+                        poolAlert("Node online", "Your Qortal node is back online.",System.currentTimeMillis(),false);
 //                        BackgroundService.AppendLog("SENDING ONLINE NOTIFICATION");
                     }
                     
@@ -845,12 +937,14 @@ public class Notifier
                                     "Connections lost", 
                                     "Your Qortal node is now connected to " + numberOfConnections + " peers.\nThis is below the threshold "
                                     + "of " + connectThreshold + " that is set in your notifications settings.",
-                                    System.currentTimeMillis());
+                                    System.currentTimeMillis(),
+                                    false);
                             
 //                            BackgroundService.AppendLog("SENDING CONNECTIONS LOST NOTIFICATION");
                             hadGainedConnections = false;
                             hadLostConnections = true;
                             connectLostSent = true;
+                            connectionsAlertTime = System.currentTimeMillis();
                         }
                         else if(hadLostConnections && numberOfConnections >= connectThreshold)
                         {
@@ -864,13 +958,15 @@ public class Notifier
                                         "Connections gained", 
                                         "Your Qortal node is now connected to " + numberOfConnections + " peers.\nThis is equal to or above the threshold "
                                         + "of " + connectThreshold + " that is set in your notifications settings.",
-                                        System.currentTimeMillis());
+                                        System.currentTimeMillis(),
+                                        false);
                                 
 //                                BackgroundService.AppendLog("SENDING CONNECTIONS GAINED NOTIFICATION");
                             }
                             
                             hadGainedConnections = true;
                             hadLostConnections = false;
+                            connectionsAlertTime = 0;
                             
                         }
                     }
@@ -892,12 +988,14 @@ public class Notifier
                                 if(syncLostEnabled)
                                 {
                                     syncLostSent = true;
+                                    syncAlertTime = System.currentTimeMillis();
                                     
                                     poolAlert(
                                             "Sync lost", 
                                             "Your Qortal node is now " + (chainHeight - myBlockHeight) + " blocks behind the chain height.\n"
                                             + "This is above the threshold of " + syncThreshold + " that is set in your notifications settings.",
-                                            System.currentTimeMillis());
+                                            System.currentTimeMillis(),
+                                            false);
                                     
 //                                    BackgroundService.AppendLog("SENDING SYNC LOST NOTIFICATION");
                                 }                                    
@@ -906,6 +1004,7 @@ public class Notifier
                             {
                                 wasUnsynced = false;
                                 wasSynced = true;
+                                syncAlertTime = 0;
                                 
                                 //don't send sync gained notification on first notification iteration
                                 //we only send these on re-gaining after wasUnsynced is true
@@ -917,7 +1016,8 @@ public class Notifier
                                             "Sync gained", 
                                             "Your Qortal node is now " + (chainHeight - myBlockHeight) + " blocks behind the chain height.\n"
                                             + "This is equal to or below threshold of " + syncThreshold + " that is set in your notifications settings.",
-                                            System.currentTimeMillis());
+                                            System.currentTimeMillis(),
+                                            false);
                                     
 //                                    BackgroundService.AppendLog("SENDING SYNC GAINED NOTIFICATION");
                                 }
@@ -957,6 +1057,7 @@ public class Notifier
                                     hasStoppedMinting = false;
                                     wasMinting = true;
                                     stoppedMintingTime = 0;
+                                    mintAlertTime = System.currentTimeMillis();
                                     
                                     if(mintingHaltedSent)
                                     {
@@ -964,7 +1065,8 @@ public class Notifier
                                             "Minting resumed", 
                                             "Minting account '" + mintingAccount + "' has resumed minting after " 
                                                     + Utilities.MillisToDayHrMinShort(notMintingTime * 60000)  + " of inactivity",
-                                            System.currentTimeMillis());
+                                            System.currentTimeMillis(),
+                                            false);
                                     }
                                 }
                                 else
@@ -973,12 +1075,14 @@ public class Notifier
                                     if(notMintingTime >= mintThreshold && !mintingHaltedSent)
                                     {
                                         mintingHaltedSent = true;
+                                        mintAlertTime = 0;
                                         
                                         poolAlert(
                                             "Minting halted", 
                                             "Minting account '" + mintingAccount + "' has not been minting for " 
                                                     + Utilities.MillisToDayHrMinShort(notMintingTime * 60000) + ".",
-                                            System.currentTimeMillis());
+                                            System.currentTimeMillis(),
+                                            false);
                                         
 //                                        BackgroundService.AppendLog("SENDING MINTING HALTED NOTIFICATION");
                                     }
@@ -988,6 +1092,9 @@ public class Notifier
                             lastBlocksMinted = blocksMinted;                            
                         }
                     }
+                    
+                    checkQortalRestartConditions();
+                    
                 }
                 catch(ConnectException e)
                 {
@@ -996,10 +1103,10 @@ public class Notifier
                     if(wasOnline && offlineEnabled)
                     {                        
                         poolAlert("Lost connection", "Qortal Node Monitor has lost the connection to your Qortal core.\nPlease check whether "
-                                + "your node is still online.",System.currentTimeMillis());
+                                + "your node is still online.",System.currentTimeMillis(),false);
                         
-                        if(restartCoreEnabled)
-                            startQortalScript();
+                        if(restartCoreEnabled && !restartInProgress)
+                            initiateRestart(false, "");
                         
 //                        BackgroundService.AppendLog("SENDING OFFLINE NOTIFICATION");
                         
@@ -1020,11 +1127,99 @@ public class Notifier
         }, 0, updateDelta);
     }
     
+    private void resetTriggers()
+    {
+        //these need to be true at start, they will trigger the code to 
+        //set the actual state through the API calls
+        wasSynced = true;
+        wasUnsynced = true;
+        hadGainedConnections = true;
+        hadLostConnections = true;
+        wasMinting = true;
+        hasStoppedMinting = true;
+        wasOnline = true;
+        syncAlertTime = 0;
+        mintAlertTime = 0;
+        connectionsAlertTime = 0;
+        stoppedMintingTime = 0;
+        mintingHaltedSent = false;
+        connectLostSent = false;
+        syncLostSent = false;
+    }
+    
+    private void checkQortalRestartConditions()
+    {
+        long currentTime = System.currentTimeMillis();        
+        long threshold = restartTimeThreshold * restartTimeUnit;
+        
+        if(restartBySyncEnabled)
+        {
+//            System.err.println(String.format("sal + th = %s\nct = %s", 
+//                    Utilities.DateFormat(syncAlertTime + threshold),
+//                    Utilities.DateFormat(currentTime)));
+            
+            
+            if(syncAlertTime > 0 && syncAlertTime + threshold < currentTime)
+            {
+                if(!restartInProgress)
+                {
+                    //If the restart was blocked (sent too early after last restart) add a time duration to the alertTime 
+                    //that was set at time of triggering, this ensures the next restart attempt for this type will
+                    //not happen before that duration 
+                    if(!initiateRestart(true, "has been out of sync for " + Utilities.MillisToDayHrMin(threshold)))
+                        syncAlertTime += restartRetryTime;
+                }             
+                else
+                    BackgroundService.AppendLog("Node Monitor has detected a concurrent restart attempt (sync restart event)");   
+
+                //No need to initiate more than one restart
+                return;
+            }
+        }
+            
+        if(restartByMintEnabled)
+        {
+            if(mintAlertTime > 0 && mintAlertTime + threshold < currentTime)
+            {
+                if(!restartInProgress)
+                {
+                    if(!initiateRestart(true, "has not been minting for " + Utilities.MillisToDayHrMin(threshold)))
+                        mintAlertTime += restartRetryTime; 
+                }             
+                else
+                    BackgroundService.AppendLog("Node Monitor has detected a concurrent restart attempt (minting restart event)");      
+
+                //No need to initiate more than one restart
+                return;
+            }
+        }
+            
+        if(restartByConnectionsEnabled)
+        {
+            if(connectionsAlertTime > 0 && connectionsAlertTime + threshold < currentTime)
+            {
+                if(!restartInProgress)
+                {
+                    if(!initiateRestart(true, "has had less than " + connectThreshold + "connections for " + Utilities.MillisToDayHrMin(threshold)))
+                        connectionsAlertTime += restartRetryTime; 
+                }             
+                else
+                    BackgroundService.AppendLog("Node Monitor has detected a concurrent restart attempt (connections restart event)");       
+            }
+        }       
+    }    
+    
     /**Sending multiple e-mails concurrently is not allowed by mail server, we need to pool all alerts and send
      each one with a 5 second delay*/
-    private void poolAlert(String subject, String message, long timestamp)
-    {        
-        alertsPool.add(new AlertItem(subject, message, timestamp, false));
+    private void poolAlert(String subject, String message, long timestamp,boolean disregardLimit)
+    {   
+        //This is the easiest way to solve the notifications table selection problem.
+        //We can't have duplicate timestamps in that table due to the timestamp being
+        //used to find the selected row in that table
+        if(alertsPool.size() > 0)
+            timestamp += 3000;
+        
+        alertsPool.add(new AlertItem(subject, message, timestamp, false,disregardLimit));
     }    
     
     private void sendAlertPool()
@@ -1060,6 +1255,9 @@ public class Notifier
     
     private boolean emailAllowed(AlertItem alertItem)
     {
+        if(alertItem.disregardLimit)
+            return true;
+        
         if(!emailLimitEnabled)
             return true;
         
@@ -1121,7 +1319,8 @@ public class Notifier
             {
                 //return and skip e-mail if cannot access e-mail settings
                 //do not disable emailEnabled, user may have not logged in yet
-                BackgroundService.AppendLog("Could not log in to mail_settings database, e-mail was not sent.");
+                BackgroundService.AppendLog("Could not log in to mail_settings database, e-mail was not sent.\n"
+                        + "E-mail subject : " + subject);
                 return;
             }
         }
@@ -1389,69 +1588,236 @@ public class Notifier
 
     }
     
-    public void startQortalScript()
-    {  
-        Thread thread = new Thread(()->
+    private boolean initiateRestart(boolean includeShutdown,String reason)
+    {          
+        
+//        System.err.println(String.format("\n\nduration = %s\nth = %s\nlrt = %s\n", 
+//                Utilities.MillisToDayHrMinShort(System.currentTimeMillis() - lastRestartTime),
+//                 Utilities.MillisToDayHrMin(restartTimeThreshold * restartTimeUnit),
+//                 Utilities.DateFormatShort(lastRestartTime)));
+        
+        if(System.currentTimeMillis() - lastRestartTime < (restartTimeThreshold * restartTimeUnit))
         {
-            Object filePathObject = Utilities.getSetting("startScriptPath", "notifications.json");
-            if(filePathObject == null)
+            String theReason = reason.isBlank() ? reason : "(" + reason + ")";
+            poolAlert("Qortal core restart attempt blocked", "Node Monitor has blocked a restart attempt " + theReason + " that was initiated at a "
+                    + "time interval shorter than your restart time threshold.\n\n"
+                    + "Time of attempt : " + Utilities.DateFormatShort(System.currentTimeMillis()) 
+                    + "\nLast restart time : " + Utilities.DateFormatShort(lastRestartTime)
+                    + "\nDuration : " + Utilities.MillisToDayHrMinShort(System.currentTimeMillis() - lastRestartTime)
+                    + "\nThreshold : " + Utilities.MillisToDayHrMin(restartTimeThreshold * 3600000), System.currentTimeMillis(),false);
+            
+            return false;
+        }
+        
+        lastRestartTime = System.currentTimeMillis();
+        restartInProgress = true;
+        
+        Thread thread = new Thread(() ->
+        {
+            try
             {
-                poolAlert("Could not restart Qortal core", 
-                        "Node Monitor failed to fetch the file path for your Qortal start up file\n\n"
-                    + "Please set the file path for your Qortal start up file through the notifications settings in "
-                                + "the UI, or through the CLI terminal.", System.currentTimeMillis());    
-
-                BackgroundService.AppendLog("Failed to fetch start script file path from settings.json");
-            }
-            else
-            {
-                try
-                {     
-                    Thread.sleep(30000);
-                    
-                    File script = new File(filePathObject.toString());
-                    if(script.exists())
-                    {
-                        String extJar = Paths.get(script.getPath()).toString();
-                        ProcessBuilder processBuilder = new ProcessBuilder(extJar);
-                        processBuilder.redirectError(new File(Paths.get(System.getProperty("user.dir") + "/bin/qortal_script_error.txt").toString()));
-                        processBuilder.redirectInput();
-                        try
-                        {
-                            processBuilder.start();
-
-                            poolAlert("Qortal core restart", 
-                                    "Node Monitor has detected that your Qortal core has gone offline and has "
-                                + "attempted to restart your core. Please make sure you have received the "
-                                + "'back online' notification if you have enabled that notification, otherwise check "
-                                + "if your Qortal core is running.", System.currentTimeMillis());
-
-                            BackgroundService.AppendLog("Restarting Qortal core");
-                        }
-                        catch (IOException ex)
-                        {
-                            System.out.println("IOException. Faild to start process. Reason: " + ex.getMessage());
-                            BackgroundService.AppendLog("IOException. Faild to start process. Reason: " + ex.getMessage());
-                        }
-                    }
-                    else
-                    {
-                        poolAlert("Could not restart Qortal core", "The provided path for your Qortal start script does not exist\n\n"
-                                + script.getPath() + "\n\n"
-                                + "Please set the file path for your Qortal start script through the notifications settings in "
-                                + "the UI, or through the CLI terminal." , System.currentTimeMillis());
-                        BackgroundService.AppendLog("The provided path for your Qortal start script does not exist:\n\n"
-                                + script.getPath());
-                    }
-                }
-                catch (Exception e)
+                boolean wasShutDown = true;
+                
+                if (includeShutdown)
                 {
-                    BackgroundService.AppendLog(e);
+                    //For now, we always initiate a core start up, not checking the return value of stopQortal()
+                    //It might turn out be better to check for succesful shutdown               
+                    stopQortal(reason);
+                    sendAlertPool();
+//                    wasShutDown = stopQortal(reason);     
+                    
+                    //if stopping and starting wait for 90 seconds (80 + 10)
+                    Thread.sleep(80000);
                 }
-            }            
+                
+                if(wasShutDown)
+                {
+                    //If only starting wait for 10 seconds
+                    Thread.sleep(10000);
+                    startQortal(reason);  
+                    sendAlertPool();
+                }
+                
+                //Wait another 45 seconds before allowing another restart
+                Thread.sleep(45000);
+                restartInProgress = false;
+                
+                //this resets all alert times and avoids more restarts being initiated than the user has allowed
+                //Also, when the core restarts, the alerts should be reset anyway
+                resetTriggers();
+                
+            }
+            catch (InterruptedException e)
+            {
+                BackgroundService.AppendLog(e);
+            }
         });
         thread.start();
+        
+        return true;
+    }
+    
+    private void startQortal(String reason)
+    {  
+        Object filePathObject = Utilities.getSetting("startScriptPath", "notifications.json");
+
+        if(filePathObject == null)
+        {
+            poolAlert("Could not start Qortal core", 
+                    "Node Monitor failed to fetch the file path for your Qortal start up file\n\n"
+                + "Please set the file path for your Qortal folder through the notifications settings in "
+                            + "the UI, or through the CLI terminal.", System.currentTimeMillis(),true);    
+
+            BackgroundService.AppendLog("Failed to fetch start script file path from settings.json");
+        }
+        else
+        {                     
+            if(System.getProperty("os.name").toLowerCase().contains("win"))
+                filePathObject +=  "/Qortal.exe";
+            else
+                filePathObject = System.getProperty("user.dir") + "/bin/start-qortal.sh";
             
+            try
+            {     
+                File script = new File(filePathObject.toString());
+                if(script.exists())
+                {
+                    String extJar = Paths.get(script.getPath()).toString();
+                    ProcessBuilder processBuilder = new ProcessBuilder(extJar);
+                    processBuilder.redirectError(new File(Paths.get(System.getProperty("user.dir") + "/bin/qortal_script_error.txt").toString()));
+                    processBuilder.redirectInput();
+                    try
+                    {
+                        processBuilder.start();
+                        
+                        reason = reason.isBlank() ? "after your core went offline" : "because it " + reason;
+
+                        poolAlert("Qortal core restart", 
+                                "Node Monitor has has attempted to restart your Qortal core " + reason + ". "
+                                + "Please make sure you receive the 'back online' notification in a minute if you have "
+                                + "enabled that notification, otherwise check if your Qortal core is running.", System.currentTimeMillis(),true);
+
+                        BackgroundService.AppendLog("Restarting Qortal core");
+                    }
+                    catch (IOException ex)
+                    {
+                        poolAlert("Could not start Qortal core", "Node monitor could not start the Qortal core due to an unexpected error.\n\n"
+                                    + ex.getMessage()+ "\n\n", System.currentTimeMillis(),true);
+                        System.out.println("IOException. Faild to start process. Reason: " + ex.getMessage());
+                        BackgroundService.AppendLog("IOException. Faild to start process. Reason: " + ex.getMessage());
+                    }
+                }
+                else
+                {
+                    poolAlert("Could not start Qortal core", "The Qortal start up file is not located at the provided path\n\n"
+                            + script.getPath() + "\n\n"
+                            + "Please set the file path for your Qortal start up file through the notifications settings in "
+                            + "the UI, or through the CLI terminal." , System.currentTimeMillis(),true);
+                    BackgroundService.AppendLog("The provided path for your Qortal start up file does not exist:\n\n"
+                            + script.getPath());
+                }
+            }
+            catch (Exception e)//Leave ambiguous to catch possible Nullpointers (or unexpected errors)
+            {
+                poolAlert("Could not restart Qortal core", "Node monitor could not restart the Qortal core due to an unexpected error.\n\n"
+                            + e.toString() + "\n\n", System.currentTimeMillis(),true);
+                BackgroundService.AppendLog("Node monitor could not restart the Qortal core due to an unexpected error.\n"
+                            + e.toString());
+            }
+        }     
+    }
+    
+    private boolean stopQortal(String reason)
+    {
+        if(System.getProperty("os.name").toLowerCase().contains("win"))
+        {
+            try
+            {
+                for(OSProcess process : systemInfo.getOperatingSystem().getProcesses())
+                {
+                    if(process.getName().equals("Qortal"))
+                    {   
+                        ProcessHandle.of(process.getProcessID()).ifPresent(ProcessHandle::destroy);
+
+                        poolAlert("Qortal core shutdown", 
+                                "Node Monitor has initiated a Qortal core shutdown because it " + reason 
+                            + ". A restart attempt will be made in 90 seconds.\n\n"
+                            + "You should receive a restart notification soon (no e-mail if your limit was "
+                            + "reached and disregard limit for Qortal restart events is disabled)", System.currentTimeMillis(),true);
+
+                        BackgroundService.AppendLog("Shutting down Qortal core");
+                        
+                        return true;
+                    }
+                }                    
+                //if Qortal process wasn't found
+                return false;
+
+            }
+            catch (Exception e)
+            {
+                poolAlert("Could not restart Qortal core", "Node monitor could not stop the Qortal core due to an unexpected error.\n\n"
+                            + e.toString() + "\n\n", System.currentTimeMillis(),true);
+                BackgroundService.AppendLog("Node monitor could not stop the Qortal core due to an unexpected error.\n"
+                            + e.toString());
+                BackgroundService.AppendLog(e);
+                return false;
+            }       
+        }
+        //Linux and Mac
+        else
+        {
+             try
+            {     
+                File script = new File(System.getProperty("user.dir") + "/bin/stop-qortal.sh");
+                if(script.exists())
+                {
+                    String extJar = Paths.get(script.getPath()).toString();
+                    ProcessBuilder processBuilder = new ProcessBuilder(extJar);
+                    processBuilder.redirectError(new File(Paths.get(System.getProperty("user.dir") + "/bin/qortal_script_error.txt").toString()));
+                    processBuilder.redirectInput();
+                    try
+                    {
+                        processBuilder.start();
+
+                        poolAlert("Qortal core shutdown", 
+                                "Node Monitor has initiated a Qortal core shutdown because it " + reason
+                            + ". A restart attempt will be made in 90 seconds.\n\n"
+                            + "You should receive an restart notification soon (no e-mail if your limit was "
+                            + "reached and disregard limit for Qortal restart events is disabled)", System.currentTimeMillis(),true);
+
+                        BackgroundService.AppendLog("Shutting down Qortal core");
+                        return true;
+                    }
+                    catch (IOException ex)
+                    {
+                        poolAlert("Could not stop the Qortal core", "Node monitor could not stop the Qortal core due to an unexpected error.\n\n"
+                                    + ex.getMessage()+ "\n\n", System.currentTimeMillis(),true);
+                        System.out.println("IOException. Faild to start shutdown script. Reason: " + ex.getMessage());
+                        BackgroundService.AppendLog("IOException. Faild to start shutdown script. Reason: " + ex.getMessage());
+                        return false;
+                    }
+                }
+                else
+                {
+                    poolAlert("Could not start Qortal core", "The Qortal stop script is not located at the provided path\n\n"
+                            + script.getPath() + "\n\n"
+                            + "Please set the file path for your Qortal folder through the notifications settings in "
+                            + "the UI, or through the CLI terminal." , System.currentTimeMillis(),true);
+                    BackgroundService.AppendLog("The provided path for your Qortal start script does not exist:\n\n"
+                            + script.getPath());
+                    return false;
+                }
+            }
+            catch (Exception e)//Leave ambiguous to catch possible Nullpointers (or unexpected errors)
+            {
+                poolAlert("Could not stop Qortal core", "Node monitor could not stop the Qortal core due to an unexpected error.\n\n"
+                            + e.toString() + "\n\n", System.currentTimeMillis(),true);
+                BackgroundService.AppendLog("Node monitor could not restart the Qortal core due to an unexpected error.\n"
+                            + e.toString());
+                return false;
+            }
+        }
     }
     
 }

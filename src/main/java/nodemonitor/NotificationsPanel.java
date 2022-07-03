@@ -9,7 +9,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.sql.Connection;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -23,9 +22,6 @@ import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.event.ListSelectionEvent;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 public class NotificationsPanel extends javax.swing.JPanel
 {
@@ -239,7 +235,7 @@ public class NotificationsPanel extends javax.swing.JPanel
                     if (c instanceof JLabel)
                     {
                         c.setFont(new Font(fontType, c.getFont().getStyle(), c.getFont().getSize()));
-                        c.setForeground(fontColor);
+                            c.setForeground(fontColor);
                     }
                     if (c instanceof JCheckBox)
                     {
@@ -264,10 +260,17 @@ public class NotificationsPanel extends javax.swing.JPanel
         mintGainedBox.setSelected(notifier.mintGainedEnabled);
         offlineBox.setSelected(notifier.offlineEnabled);
         emailLimitBox.setSelected(notifier.emailLimitEnabled);
+        limitDisregardBox.setSelected(notifier.limitDisregardEnabled);
         syncSlider.setValue(notifier.syncThreshold);
+        syncSliderStateChanged(null);
         connectionsSlider.setValue(notifier.connectThreshold);
+        connectionsSliderStateChanged(null);
         mintSlider.setValue(notifier.mintThreshold);
+        mintSliderStateChanged(null);
         emailLimitSlider.setValue(notifier.emailLimit);
+        emailLimitSliderStateChanged(null);
+        restartTimeSlider.setValue(notifier.restartTimeThreshold);
+        restartTimeSliderStateChanged(null);
         
         onlineBox.setSelected(notifier.onlineEnabled);
         checkToggle(offlineBox, onlineBox, "onlineEnabled");
@@ -277,12 +280,18 @@ public class NotificationsPanel extends javax.swing.JPanel
         
         mintLostBox.setSelected(notifier.mintLostEnabled);   
         checkToggle(mintLostBox, mintGainedBox, "mintGainedEnabled");   
+        restartByMintBox.setSelected(notifier.restartByMintEnabled);
+        checkToggle(mintGainedBox, restartByMintBox, "restartByMintEnabled");
         
         syncLostBox.setSelected(notifier.syncLostEnabled);
         checkToggle(syncLostBox, syncGainBox, "syncGainedEnabled");
+        restartBySyncBox.setSelected(notifier.restartBySyncEnabled);
+        checkToggle(syncGainBox, restartBySyncBox, "restartBySyncEnabled");
         
         connectionsLostBox.setSelected(notifier.connectLostEnabled);
         checkToggle(connectionsLostBox, connectionsGainedBox, "connectGainedEnabled");
+        restartByConnectionsBox.setSelected(notifier.restartByConnectionsEnabled);
+        checkToggle(connectionsGainedBox, restartByConnectionsBox, "restartByConnectionsEnabled");
     }
     
     private void checkToggle(JCheckBox source, JCheckBox target, String key)
@@ -294,6 +303,84 @@ public class NotificationsPanel extends javax.swing.JPanel
             Utilities.updateSetting(key, "false", "notifications.json");
         }
         target.setEnabled(source.isSelected());
+    }
+    
+    private void checkToggleWithFolderCheck(String key, JCheckBox checkBox)
+    {
+        Object filePathObject = Utilities.getSetting("startScriptPath", "notifications.json");
+        if(filePathObject == null || filePathObject.toString().isBlank())
+        {
+            JOptionPane.showMessageDialog(this, "Please set the file path for your Qortal folder first");
+            checkBox.setSelected(false);
+            Utilities.updateSetting(key, "false","notifications.json");
+        }
+        else
+        {
+            boolean isValidFolder = filePathObject.toString().toLowerCase().endsWith("qortal");
+            File folder = null;
+            try
+            {
+                folder = new File(filePathObject.toString());                
+            }
+            catch (Exception e)
+            {
+                BackgroundService.AppendLog(e);
+            }
+            
+            if(isValidFolder && folder != null && folder.isDirectory()) 
+            {
+                boolean validity = folderIsValid(folder.getPath());
+                checkBox.setSelected(validity);                
+                Utilities.updateSetting(key, String.valueOf(validity),"notifications.json");  
+            }
+            else
+            {
+                JOptionPane.showMessageDialog(this, "The folder that was set is not valid\n" + (folder != null ? folder.getPath() : ""));
+                checkBox.setSelected(false);
+                Utilities.updateSetting(key, "false","notifications.json");   
+            }
+        }        
+    }
+    
+    private boolean folderIsValid(String folderPath)
+    {                
+        String os = System.getProperty("os.name").toLowerCase();
+        
+        boolean isWindows;
+        if(os.contains("win"))
+            isWindows = true;
+        else if (os.contains("nix") || os.contains("nux") || os.contains("aix") || os.contains("mac"))
+            isWindows = false;
+        else
+        {
+            JOptionPane.showMessageDialog(this, "Incompatible Operating System : " + os);
+            return false;
+        }
+
+        if(isWindows)
+        {
+            File startFile = new File(folderPath + "/Qortal.exe");
+            if(!startFile.exists())
+            {
+                JOptionPane.showMessageDialog(this, "The Qortal folder in your settings does not contain the 'Qortal.exe' file");
+                return false;
+            }
+            else
+                return true;
+        }
+        else
+        {
+            File startFile = new File(folderPath + "/start.sh");
+            File stopFile = new File(folderPath + "/stop.sh");
+            if(!startFile.exists() || !stopFile.exists())
+            {
+                JOptionPane.showMessageDialog(this, "The Qortal folder in your settings does not contain the 'start.sh' or 'stop.sh' files");
+                return false;
+            }
+            else
+                return true;
+        }
+        
     }
     
     /**
@@ -344,6 +431,15 @@ public class NotificationsPanel extends javax.swing.JPanel
         restartCoreCheckbox = new javax.swing.JCheckBox();
         jSeparator10 = new javax.swing.JSeparator();
         setScriptButton = new javax.swing.JButton();
+        restartBySyncBox = new javax.swing.JCheckBox();
+        restartByMintBox = new javax.swing.JCheckBox();
+        restartByConnectionsBox = new javax.swing.JCheckBox();
+        jSeparator9 = new javax.swing.JSeparator();
+        jLabel7 = new javax.swing.JLabel();
+        restartTimeSlider = new javax.swing.JSlider();
+        limitDisregardBox = new javax.swing.JCheckBox();
+        restartTimeLabel = new javax.swing.JLabel();
+        restartsHintLabel = new javax.swing.JLabel();
         loginPanel = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
         loginPasswordField = new javax.swing.JPasswordField();
@@ -470,7 +566,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 14;
+        gridBagConstraints.gridy = 18;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         gridBagConstraints.insets = new java.awt.Insets(10, 0, 0, 0);
         settingsPanel.add(syncLostBox, gridBagConstraints);
@@ -485,7 +581,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 15;
+        gridBagConstraints.gridy = 19;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(syncGainBox, gridBagConstraints);
 
@@ -499,7 +595,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 24;
+        gridBagConstraints.gridy = 30;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(connectionsLostBox, gridBagConstraints);
 
@@ -513,7 +609,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 25;
+        gridBagConstraints.gridy = 31;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(connectionsGainedBox, gridBagConstraints);
 
@@ -527,7 +623,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 9;
+        gridBagConstraints.gridy = 15;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(onlineBox, gridBagConstraints);
 
@@ -541,7 +637,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 8;
+        gridBagConstraints.gridy = 14;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(offlineBox, gridBagConstraints);
 
@@ -563,14 +659,14 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 17;
+        gridBagConstraints.gridy = 22;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         settingsPanel.add(syncSlider, gridBagConstraints);
 
         jLabel1.setText("Set syncing treshold");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 16;
+        gridBagConstraints.gridy = 21;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
         settingsPanel.add(jLabel1, gridBagConstraints);
 
@@ -592,7 +688,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 27;
+        gridBagConstraints.gridy = 34;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 30, 0);
         settingsPanel.add(connectionsSlider, gridBagConstraints);
@@ -600,18 +696,18 @@ public class NotificationsPanel extends javax.swing.JPanel
         jLabel2.setText("Set connections treshold");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 26;
+        gridBagConstraints.gridy = 33;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
         settingsPanel.add(jLabel2, gridBagConstraints);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 7;
+        gridBagConstraints.gridy = 13;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(10, 0, 10, 0);
         settingsPanel.add(jSeparator2, gridBagConstraints);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 18;
+        gridBagConstraints.gridy = 23;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(10, 0, 15, 0);
         settingsPanel.add(jSeparator4, gridBagConstraints);
@@ -635,14 +731,14 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 22;
+        gridBagConstraints.gridy = 28;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         settingsPanel.add(mintSlider, gridBagConstraints);
 
         jLabel4.setText("Set minting treshold");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 21;
+        gridBagConstraints.gridy = 27;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
         settingsPanel.add(jLabel4, gridBagConstraints);
 
@@ -656,7 +752,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 20;
+        gridBagConstraints.gridy = 25;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(mintGainedBox, gridBagConstraints);
 
@@ -670,12 +766,12 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 19;
+        gridBagConstraints.gridy = 24;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         settingsPanel.add(mintLostBox, gridBagConstraints);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 4;
+        gridBagConstraints.gridy = 11;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(10, 0, 10, 0);
         settingsPanel.add(jSeparator8, gridBagConstraints);
@@ -684,12 +780,12 @@ public class NotificationsPanel extends javax.swing.JPanel
         jLabel5.setText("Notify me when my node...");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 5;
+        gridBagConstraints.gridy = 12;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 0);
         settingsPanel.add(jLabel5, gridBagConstraints);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 23;
+        gridBagConstraints.gridy = 5;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(10, 0, 15, 0);
         settingsPanel.add(jSeparator3, gridBagConstraints);
@@ -712,14 +808,14 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 2;
+        gridBagConstraints.gridy = 3;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         settingsPanel.add(emailLimitSlider, gridBagConstraints);
 
         jLabel6.setText("Set e-mail limit");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 1;
+        gridBagConstraints.gridy = 2;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
         settingsPanel.add(jLabel6, gridBagConstraints);
 
@@ -734,11 +830,14 @@ public class NotificationsPanel extends javax.swing.JPanel
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 0;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.insets = new java.awt.Insets(0, 91, 0, 0);
         settingsPanel.add(emailLimitBox, gridBagConstraints);
 
         emailLimitHintLabel.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         emailLimitHintLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         emailLimitHintLabel.setText("<html><u>Should I set a limit?</u></html>");
+        emailLimitHintLabel.setToolTipText("Click for more info");
         emailLimitHintLabel.addMouseListener(new java.awt.event.MouseAdapter()
         {
             public void mouseReleased(java.awt.event.MouseEvent evt)
@@ -748,9 +847,9 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 3;
+        gridBagConstraints.gridy = 4;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.insets = new java.awt.Insets(5, 0, 10, 0);
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 0);
         settingsPanel.add(emailLimitHintLabel, gridBagConstraints);
 
         restartCoreCheckbox.setText("Try to restart the Qoral core when it goes offline");
@@ -763,18 +862,18 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 11;
+        gridBagConstraints.gridy = 16;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
         settingsPanel.add(restartCoreCheckbox, gridBagConstraints);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 13;
+        gridBagConstraints.gridy = 17;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(10, 0, 15, 0);
         settingsPanel.add(jSeparator10, gridBagConstraints);
 
-        setScriptButton.setText("Set start up file path");
+        setScriptButton.setText("Set Qortal folder");
         setScriptButton.setMaximumSize(new java.awt.Dimension(200, 27));
         setScriptButton.setMinimumSize(new java.awt.Dimension(200, 27));
         setScriptButton.setPreferredSize(new java.awt.Dimension(200, 27));
@@ -787,8 +886,128 @@ public class NotificationsPanel extends javax.swing.JPanel
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 12;
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
         settingsPanel.add(setScriptButton, gridBagConstraints);
+
+        restartBySyncBox.setText("try to STOP and then START the Qortal core if not re-synced within 1 hours");
+        restartBySyncBox.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                restartBySyncBoxActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 20;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        settingsPanel.add(restartBySyncBox, gridBagConstraints);
+
+        restartByMintBox.setText("try to STOP and then START the Qortal core if not resumed minting within 1 hours");
+        restartByMintBox.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                restartByMintBoxActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 26;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        settingsPanel.add(restartByMintBox, gridBagConstraints);
+
+        restartByConnectionsBox.setText("try to STOP and then START the Qortal core if not regained peers within 1 hours");
+        restartByConnectionsBox.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                restartByConnectionsBoxActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 32;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        settingsPanel.add(restartByConnectionsBox, gridBagConstraints);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 29;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(10, 0, 15, 0);
+        settingsPanel.add(jSeparator9, gridBagConstraints);
+
+        jLabel7.setText("NOTE: Qortal restarts won't work if notifications are disabled");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 7;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 0);
+        settingsPanel.add(jLabel7, gridBagConstraints);
+
+        restartTimeSlider.setMaximum(24);
+        restartTimeSlider.setMinimum(1);
+        restartTimeSlider.setValue(1);
+        restartTimeSlider.addChangeListener(new javax.swing.event.ChangeListener()
+        {
+            public void stateChanged(javax.swing.event.ChangeEvent evt)
+            {
+                restartTimeSliderStateChanged(evt);
+            }
+        });
+        restartTimeSlider.addMouseListener(new java.awt.event.MouseAdapter()
+        {
+            public void mouseReleased(java.awt.event.MouseEvent evt)
+            {
+                restartTimeSliderMouseReleased(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 9;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        settingsPanel.add(restartTimeSlider, gridBagConstraints);
+
+        limitDisregardBox.setText("Disregard e-mail limit for Qortal restarts");
+        limitDisregardBox.setToolTipText("");
+        limitDisregardBox.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                limitDisregardBoxActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.insets = new java.awt.Insets(0, 91, 0, 0);
+        settingsPanel.add(limitDisregardBox, gridBagConstraints);
+
+        restartTimeLabel.setText("Restart time threshold");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 8;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 0);
+        settingsPanel.add(restartTimeLabel, gridBagConstraints);
+
+        restartsHintLabel.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        restartsHintLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        restartsHintLabel.setText("<html><u>About Qortal restarts</u></html>");
+        restartsHintLabel.setToolTipText("Click for more info");
+        restartsHintLabel.addMouseListener(new java.awt.event.MouseAdapter()
+        {
+            public void mouseReleased(java.awt.event.MouseEvent evt)
+            {
+                restartsHintLabelMouseReleased(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 10;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 0);
+        settingsPanel.add(restartsHintLabel, gridBagConstraints);
 
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
@@ -1102,6 +1321,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         passwordHintLabel.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         passwordHintLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         passwordHintLabel.setText("<html><u>Should I encrypt my mail settings?</u></html>");
+        passwordHintLabel.setToolTipText("Click for more info");
         passwordHintLabel.addMouseListener(new java.awt.event.MouseAdapter()
         {
             public void mouseReleased(java.awt.event.MouseEvent evt)
@@ -1135,6 +1355,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         settingsHintLabel.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         settingsHintLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         settingsHintLabel.setText("<html><u>What are SMTP setting?</u></html>");
+        settingsHintLabel.setToolTipText("Click for more info");
         settingsHintLabel.addMouseListener(new java.awt.event.MouseAdapter()
         {
             public void mouseReleased(java.awt.event.MouseEvent evt)
@@ -1152,6 +1373,7 @@ public class NotificationsPanel extends javax.swing.JPanel
         disclaimerLabel.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         disclaimerLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         disclaimerLabel.setText("<html><u>DISCLAIMER</u></html>");
+        disclaimerLabel.setToolTipText("Click for more info");
         disclaimerLabel.addMouseListener(new java.awt.event.MouseAdapter()
         {
             public void mouseReleased(java.awt.event.MouseEvent evt)
@@ -1378,11 +1600,20 @@ public class NotificationsPanel extends javax.swing.JPanel
         notifier.syncLostEnabled = syncLostBox.isSelected();
         Utilities.updateSetting("syncLostEnabled", String.valueOf(syncLostBox.isSelected()),"notifications.json");        
         checkToggle(syncLostBox, syncGainBox, "syncGainedEnabled");
+        notifier.syncGainedEnabled = syncGainBox.isSelected();
+        //only allow disable for the top checkbox, the enabling is determined with the middle checkbox 
+        if(!syncLostBox.isSelected())
+        {
+            checkToggle(syncLostBox, restartBySyncBox, "restartBySyncEnabled");
+            notifier.restartBySyncEnabled = restartBySyncBox.isSelected();            
+        }
     }//GEN-LAST:event_syncLostBoxActionPerformed
 
     private void syncGainBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_syncGainBoxActionPerformed
     {//GEN-HEADEREND:event_syncGainBoxActionPerformed
         notifier.syncGainedEnabled = syncGainBox.isSelected();
+        checkToggle(syncGainBox, restartBySyncBox, "restartBySyncEnabled");
+        notifier.restartBySyncEnabled = restartBySyncBox.isSelected();
         Utilities.updateSetting("syncGainedEnabled", String.valueOf(syncGainBox.isSelected()),"notifications.json");
     }//GEN-LAST:event_syncGainBoxActionPerformed
 
@@ -1391,11 +1622,20 @@ public class NotificationsPanel extends javax.swing.JPanel
         notifier.connectLostEnabled = connectionsLostBox.isSelected();
         Utilities.updateSetting("connectLostEnabled", String.valueOf(connectionsLostBox.isSelected()),"notifications.json");        
         checkToggle(connectionsLostBox, connectionsGainedBox, "connectGainedEnabled");
+        notifier.connectGainedEnabled = connectionsGainedBox.isSelected();
+        //only allow disable for the top checkbox, the enabling is determined with the middle checkbox 
+        if(!connectionsLostBox.isSelected())
+        {
+            checkToggle(connectionsLostBox, restartByConnectionsBox, "restartByConnectionsEnabled");
+            notifier.restartByConnectionsEnabled = restartByConnectionsBox.isSelected();      
+        }
     }//GEN-LAST:event_connectionsLostBoxActionPerformed
 
     private void connectionsGainedBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_connectionsGainedBoxActionPerformed
     {//GEN-HEADEREND:event_connectionsGainedBoxActionPerformed
         notifier.connectGainedEnabled = connectionsGainedBox.isSelected();
+        checkToggle(connectionsGainedBox, restartByConnectionsBox, "restartByConnectionsEnabled");
+        notifier.restartByConnectionsEnabled = restartByConnectionsBox.isSelected();
         Utilities.updateSetting("connectGainedEnabled", String.valueOf(connectionsGainedBox.isSelected()),"notifications.json");
     }//GEN-LAST:event_connectionsGainedBoxActionPerformed
 
@@ -1403,6 +1643,7 @@ public class NotificationsPanel extends javax.swing.JPanel
     {//GEN-HEADEREND:event_onlineBoxActionPerformed
         notifier.onlineEnabled = onlineBox.isSelected();
         Utilities.updateSetting("onlineEnabled", String.valueOf(onlineBox.isSelected()),"notifications.json");
+        //restart core is checkbox is only enabled/disabled in the offlineCheckboxAP
     }//GEN-LAST:event_onlineBoxActionPerformed
 
     private void offlineBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_offlineBoxActionPerformed
@@ -1410,7 +1651,9 @@ public class NotificationsPanel extends javax.swing.JPanel
         notifier.offlineEnabled = offlineBox.isSelected();
         Utilities.updateSetting("offlineEnabled", String.valueOf(offlineBox.isSelected()),"notifications.json");
         checkToggle(offlineBox, onlineBox, "onlineEnabled");
+        notifier.onlineEnabled = onlineBox.isSelected();
         checkToggle(offlineBox, restartCoreCheckbox, "restartCoreEnabled");
+        notifier.restartCoreEnabled = restartCoreCheckbox.isSelected();
     }//GEN-LAST:event_offlineBoxActionPerformed
 
     private void syncSliderStateChanged(javax.swing.event.ChangeEvent evt)//GEN-FIRST:event_syncSliderStateChanged
@@ -1551,6 +1794,8 @@ public class NotificationsPanel extends javax.swing.JPanel
     private void mintGainedBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_mintGainedBoxActionPerformed
     {//GEN-HEADEREND:event_mintGainedBoxActionPerformed
         notifier.mintGainedEnabled = mintGainedBox.isSelected();
+        checkToggle(mintGainedBox, restartByMintBox,"restartByMintEnabled");
+        notifier.restartByMintEnabled = restartByMintBox.isSelected();
         Utilities.updateSetting("mintGainedEnabled", String.valueOf(mintGainedBox.isSelected()),"notifications.json");
     }//GEN-LAST:event_mintGainedBoxActionPerformed
 
@@ -1558,7 +1803,14 @@ public class NotificationsPanel extends javax.swing.JPanel
     {//GEN-HEADEREND:event_mintLostBoxActionPerformed
         notifier.mintLostEnabled = mintLostBox.isSelected();
         Utilities.updateSetting("mintLostEnabled", String.valueOf(mintLostBox.isSelected()),"notifications.json");                
-        checkToggle(mintLostBox, mintGainedBox,"mintGainedEnabled");
+        checkToggle(mintLostBox, mintGainedBox,"mintGainedEnabled");    
+        notifier.mintGainedEnabled = mintGainedBox.isSelected();    
+        //only allow disable for the top checkbox, the enabling is determined with the middle checkbox 
+        if(!mintLostBox.isSelected())
+        {
+            checkToggle(mintLostBox, restartByMintBox,"restartByMintEnabled");
+            notifier.restartByMintEnabled = restartByMintBox.isSelected();         
+        }
     }//GEN-LAST:event_mintLostBoxActionPerformed
 
     private void clearAllButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_clearAllButtonActionPerformed
@@ -1604,7 +1856,9 @@ public class NotificationsPanel extends javax.swing.JPanel
                 + "can set a limit for the number of e-mails that Node Monitor will send within a 24 hour period.<br/><br/>"
                 + "If you're receiving too many notifications you can try tweaking your notifications settings by enabling "
                 + "or disabling certain notifications or by adjusting the sliders to increase or decrease the threshold "
-                + "at which a notification will be sent.";
+                + "at which a notification will be sent.<br/><br/>"
+                + "You can opt to disregard the e-mail limit for Qortal core restarts, in which case e-mail notifications will "
+                + "always be sent when the Qortal core is stopped or started by Node Monitor, even if the e-mail limit has been reached.";
         
         gui.showHintDialog(evt, message);
     }//GEN-LAST:event_emailLimitHintLabelMouseReleased
@@ -1616,107 +1870,168 @@ public class NotificationsPanel extends javax.swing.JPanel
 
     private void restartCoreCheckboxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_restartCoreCheckboxActionPerformed
     {//GEN-HEADEREND:event_restartCoreCheckboxActionPerformed
-        Object filePathObject = Utilities.getSetting("startScriptPath", "notifications.json");
-        if(filePathObject == null || filePathObject.toString().isBlank())
+        if (restartCoreCheckbox.isSelected())
         {
-            JOptionPane.showMessageDialog(this, "Please set the file path for your Qortal startup file first");
-            notifier.restartCoreEnabled = false;
-            restartCoreCheckbox.setSelected(false);
-            Utilities.updateSetting("restartCoreEnabled", "false","notifications.json");
-            return;            
+            checkToggleWithFolderCheck("restartCoreEnabled", restartCoreCheckbox);
+            notifier.restartCoreEnabled = restartCoreCheckbox.isSelected();
         }
-        
-        notifier.restartCoreEnabled = restartCoreCheckbox.isSelected();
-        Utilities.updateSetting("restartCoreEnabled", String.valueOf(restartCoreCheckbox.isSelected()),"notifications.json");
+        else
+        {
+            notifier.restartCoreEnabled = false;
+            Utilities.updateSetting("restartCoreEnabled", "false", "notifications.json");
+        }
     }//GEN-LAST:event_restartCoreCheckboxActionPerformed
 
     private void setScriptButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_setScriptButtonActionPerformed
     {//GEN-HEADEREND:event_setScriptButtonActionPerformed
         JOptionPane.showMessageDialog(this, Utilities.AllignCenterHTML(
-                "You will now be asked to provide the file path to your Qortal startup file<br/>"
-            + "'Qortal.exe' for Windows users, 'start.sh' for Mac and Linux users<br/>"
-            + "This file can be found in your main qortal folder<br/><br/>"
-            + "Please note that this function only works if you are running<br>"
-            + "Node Monitor on the same system as your Qortal core"));
+                "You will now be asked to provide the path to your Qortal folder<br/>"
+            + "Node Monitor needs to know where to find the 'Qortal.exe' for Windows<br/>"
+            + "and the 'start.sh' and 'stop.sh' scripts for Mac and Linux<br/><br/>"
+            + "Please note that starting and stopping the Qortal core only works if<br/>"
+            + "you are running Node Monitor on the same system as your core"));
         
         String os = System.getProperty("os.name").toLowerCase();
  
-          boolean isWindows;
-          if(os.contains("win"))
-              isWindows = true;
-          else if (os.contains("nix") || os.contains("nux") || os.contains("aix") || os.contains("mac"))
-            isWindows = false;
-          else
-          {
-              JOptionPane.showMessageDialog(this, "Incompatible Operating System : " + os);
-              return;
-          }
+        boolean isWindows;
+        if(os.contains("win"))
+            isWindows = true;
+        else if (os.contains("nix") || os.contains("nux") || os.contains("aix") || os.contains("mac"))
+          isWindows = false;
+        else
+        {
+            JOptionPane.showMessageDialog(this, "Incompatible Operating System : " + os);
+            return;
+        }
         
         JFileChooser jfc = new JFileChooser(System.getProperty("user.home"));
-        
-        FileNameExtensionFilter filter;
-        if(isWindows)
-            filter = new FileNameExtensionFilter("Select the Qortal startup file (Qortal.exe)", "exe");
-        else
-            filter = new FileNameExtensionFilter("Select the Qortal startup script (start.sh)", "sh");
-            
-        //        jfc.setSelectedFile(new File("properties.mv.db")); //show preferred filename in filechooser
-        // add filters
-        jfc.setAcceptAllFileFilterUsed(false);
-        jfc.addChoosableFileFilter(filter);
-        jfc.setFileFilter(filter);
+        jfc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         int returnValue = jfc.showOpenDialog(null);
 
         if (returnValue == JFileChooser.APPROVE_OPTION)
         {            
-            File selectedFile = jfc.getSelectedFile();               
+            File selectedFolder = jfc.getSelectedFile();  
             
-            if(isWindows)
+            if(!selectedFolder.getPath().toLowerCase().endsWith("qortal"))
             {
-                if(!selectedFile.getName().equals("Qortal.exe"))
-                {
-                    JOptionPane.showMessageDialog(this, "Invalid file, filename must be named 'Qortal.exe'");
-                    return;
-                }                
-            }
-            else
-            {
-                if(!selectedFile.getName().equals("start.sh"))
-                {
-                    JOptionPane.showMessageDialog(this, "Invalid file, filename must be named 'start.sh'");
-                    return;
-                }                
-            }
+                JOptionPane.showMessageDialog(this, "The folder that was set is not valid\n" + selectedFolder.getPath());
+                return;
+            }            
             
-            if(isWindows)
-                Utilities.updateSetting("startScriptPath", selectedFile.getPath(), "notifications.json");
-            else
-                Utilities.updateSetting("startScriptPath", System.getProperty("user.dir") + "/start-qortal.sh", "notifications.json");
-                
-            if(isWindows)
-                JOptionPane.showMessageDialog(this, "Qortal start up file path was set:\n" + selectedFile.getPath()); 
-            else
+            if(folderIsValid(selectedFolder.getPath()))
             {
-                File qortalStartScript = new File(System.getProperty("user.dir") + "/start-qortal.sh");
+                //Linux and Mac version will only use this key to know if folder was set, the actual start/stop scripts
+                //will be created in the node-monitor/bin folder
+                Utilities.updateSetting("startScriptPath", selectedFolder.getPath(), "notifications.json");
                 
-                try(BufferedWriter writer = new BufferedWriter(new FileWriter(qortalStartScript)))
+                if(isWindows)
+                    JOptionPane.showMessageDialog(this, "Qortal start up file path was set:\n" + selectedFolder.getPath()); 
+                else
                 {
-                    String command = "cd " + selectedFile.getParent() + " && ./start.sh"; 
-                    writer.write(command);
-                    writer.close();     
-                
-                    JOptionPane.showMessageDialog(this, "Qortal start up file path was set:\n" + selectedFile.getPath() + "\n\n"
-                            + "PLEASE MAKE SURE THAT THE 'start-qortal.sh' FILE IN THE\n"
-                            + "'node-monitor' FOLDER IS EXECUTABLE!\n\n" + System.getProperty("user.dir") + "/start-qortal.sh");         
+                    File qortalStartScript = new File(System.getProperty("user.dir") + "/bin/start-qortal.sh");
+                    File qortalStopScript = new File(System.getProperty("user.dir") + "/bin/stop-qortal.sh");
+
+                    try(BufferedWriter writer = new BufferedWriter(new FileWriter(qortalStartScript)))
+                    {
+                        String command = "cd " + selectedFolder.getPath()+ " && ./start.sh"; 
+                        writer.write(command); 
+
+                        try (BufferedWriter writer2 = new BufferedWriter(new FileWriter(qortalStopScript)))
+                        {
+                            command = "cd " + selectedFolder.getPath()+ " && ./stop.sh";
+                            writer2.write(command);   
+                        }
+                        
+                        JOptionPane.showMessageDialog(this, "Qortal start up file path was set:\n" + selectedFolder.getPath() + "\n\n"
+                                + "PLEASE MAKE SURE THAT THE 'start-qortal.sh'  AND 'stop-qortal.sh' FILES IN THE\n"
+                                + "'node-monitor/bin' FOLDER ARE EXECUTABLE!\n\n" + System.getProperty("user.dir") + "/bin/start-qortal.sh\n"
+                                + System.getProperty("user.dir") + "/bin/start-qortal.sh");         
+                    }
+                    catch (IOException e)
+                    {
+                        JOptionPane.showMessageDialog(this, "An error occured, could not set start up file : \n" + e.toString()); 
+                        BackgroundService.AppendLog(e);
+                    }                
                 }
-                catch (IOException e)
-                {
-                    JOptionPane.showMessageDialog(this, "An error occured, could not set start up file : \n" + e.toString()); 
-                    BackgroundService.AppendLog(e);
-                }                
-            }
+            }   
         }
     }//GEN-LAST:event_setScriptButtonActionPerformed
+
+    private void restartBySyncBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_restartBySyncBoxActionPerformed
+    {//GEN-HEADEREND:event_restartBySyncBoxActionPerformed
+        if (restartBySyncBox.isSelected())
+        {
+            checkToggleWithFolderCheck("restartBySyncEnabled", restartBySyncBox);
+            notifier.restartBySyncEnabled = restartBySyncBox.isSelected();
+        }
+        else
+        {
+            notifier.restartBySyncEnabled = false;
+            Utilities.updateSetting("restartBySyncEnabled", "false", "notifications.json");
+        }
+    }//GEN-LAST:event_restartBySyncBoxActionPerformed
+
+    private void restartByMintBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_restartByMintBoxActionPerformed
+    {//GEN-HEADEREND:event_restartByMintBoxActionPerformed
+         if (restartByMintBox.isSelected())
+        {
+            checkToggleWithFolderCheck("restartByMintEnabled", restartByMintBox);
+            notifier.restartByMintEnabled = restartByMintBox.isSelected();
+        }
+        else
+        {
+            notifier.restartByMintEnabled = false;
+            Utilities.updateSetting("restartByMintEnabled", "false", "notifications.json");
+        }
+    }//GEN-LAST:event_restartByMintBoxActionPerformed
+
+    private void restartByConnectionsBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_restartByConnectionsBoxActionPerformed
+    {//GEN-HEADEREND:event_restartByConnectionsBoxActionPerformed
+         if (restartByConnectionsBox.isSelected())
+        {
+            checkToggleWithFolderCheck("restartByConnectionsEnabled", restartByConnectionsBox);
+            notifier.restartByConnectionsEnabled = restartByConnectionsBox.isSelected();
+        }
+        else
+        {
+            notifier.restartByConnectionsEnabled = false;
+            Utilities.updateSetting("restartByConnectionsEnabled", "false", "notifications.json");
+        }
+    }//GEN-LAST:event_restartByConnectionsBoxActionPerformed
+
+    private void restartTimeSliderStateChanged(javax.swing.event.ChangeEvent evt)//GEN-FIRST:event_restartTimeSliderStateChanged
+    {//GEN-HEADEREND:event_restartTimeSliderStateChanged
+        restartBySyncBox.setText("try to STOP and then START the Qortal core if not re-synced within " + restartTimeSlider.getValue() + " hours");
+        restartByMintBox.setText("try to STOP and then START the Qortal core if not resumed within " + restartTimeSlider.getValue() + " hours");
+        restartByConnectionsBox.setText("try to STOP and then START the Qortal core if not regained within " + restartTimeSlider.getValue() + " hours");
+        restartTimeLabel.setText("Restart time threshold : " + restartTimeSlider.getValue() + " hours");
+    }//GEN-LAST:event_restartTimeSliderStateChanged
+
+    private void restartTimeSliderMouseReleased(java.awt.event.MouseEvent evt)//GEN-FIRST:event_restartTimeSliderMouseReleased
+    {//GEN-HEADEREND:event_restartTimeSliderMouseReleased
+        notifier.restartTimeThreshold = restartTimeSlider.getValue();
+        Utilities.updateSetting("restartTimeThreshold", String.valueOf(restartTimeSlider.getValue()),"notifications.json");
+    }//GEN-LAST:event_restartTimeSliderMouseReleased
+
+    private void limitDisregardBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_limitDisregardBoxActionPerformed
+    {//GEN-HEADEREND:event_limitDisregardBoxActionPerformed
+        notifier.limitDisregardEnabled = limitDisregardBox.isSelected();
+        Utilities.updateSetting("limitDisregardEnabled", String.valueOf(limitDisregardBox.isSelected()),"notifications.json");
+    }//GEN-LAST:event_limitDisregardBoxActionPerformed
+
+    private void restartsHintLabelMouseReleased(java.awt.event.MouseEvent evt)//GEN-FIRST:event_restartsHintLabelMouseReleased
+    {//GEN-HEADEREND:event_restartsHintLabelMouseReleased
+        String message = 
+                "Node Monitor can attempt to stop and start your Qortal core when certain events are triggered. "
+                + "For example, when your node goes out of sync and then doesn't re-sync for a specified amount of time.<br/><br/>"
+                + "The restart time threshold determines this specified amount of time. It also limits the time interval between "
+                + "core shutdowns, a triggered shutdown will be blocked if it occurs within this duration of the last shutdown.<br/><br/>"
+                + "It's important to note that core re-starts will only work if you have in-app OR e-mail notifications enabled.<br/><br/>"
+                + "If you enable this function, Node Monitor will be stopping and starting your Qortal core. It is therefore important "
+                + "to make sure your settings do not get triggered too often by adjusting them to your circumstances. ";
+        
+        gui.showHintDialog(evt, message);
+    }//GEN-LAST:event_restartsHintLabelMouseReleased
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -1745,6 +2060,7 @@ public class NotificationsPanel extends javax.swing.JPanel
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JSeparator jSeparator10;
@@ -1755,7 +2071,9 @@ public class NotificationsPanel extends javax.swing.JPanel
     private javax.swing.JSeparator jSeparator6;
     private javax.swing.JSeparator jSeparator7;
     private javax.swing.JSeparator jSeparator8;
+    private javax.swing.JSeparator jSeparator9;
     private javax.swing.JSplitPane jSplitPane1;
+    protected javax.swing.JCheckBox limitDisregardBox;
     private javax.swing.JButton loginButton;
     private javax.swing.JPanel loginPanel;
     private javax.swing.JPasswordField loginPasswordField;
@@ -1775,7 +2093,13 @@ public class NotificationsPanel extends javax.swing.JPanel
     private javax.swing.JCheckBox receivedMailCheckbox;
     private javax.swing.JTextField recipientInput;
     private javax.swing.JLabel recipientLabel;
+    protected javax.swing.JCheckBox restartByConnectionsBox;
+    protected javax.swing.JCheckBox restartByMintBox;
+    protected javax.swing.JCheckBox restartBySyncBox;
     protected javax.swing.JCheckBox restartCoreCheckbox;
+    private javax.swing.JLabel restartTimeLabel;
+    protected javax.swing.JSlider restartTimeSlider;
+    private javax.swing.JLabel restartsHintLabel;
     private javax.swing.JButton saveMailServerButton;
     private javax.swing.JButton setScriptButton;
     private javax.swing.JLabel settingsHintLabel;

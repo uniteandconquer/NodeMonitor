@@ -383,9 +383,18 @@ public class GUI extends javax.swing.JFrame
     {
         hintDialogLabel.setText(Utilities.AllignHTML(message,"justify"));
 
-        int x = (int)evt.getLocationOnScreen().getX();
-        int y = (int)evt.getLocationOnScreen().getY();
-        setInfoDialogBounds(x, y, 6);
+//        int x = (int)evt.getLocationOnScreen().getX();
+//        int y = (int)evt.getLocationOnScreen().getY();        
+//        setInfoDialogBounds(x, y, 6);
+        
+        SwingUtilities.invokeLater(() ->
+        {
+            hintDialog.pack();
+            int x = getX() + ((getWidth() / 2) - (hintDialog.getWidth() / 2));
+            int y = getY() + ((getHeight() / 2) - (hintDialog.getHeight() / 2));
+            hintDialog.setLocation(x, y);
+            hintDialog.setVisible(true);
+        });
     }
     
     /**
