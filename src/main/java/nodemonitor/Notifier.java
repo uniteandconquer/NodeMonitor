@@ -315,34 +315,44 @@ public class Notifier
         {
             printMenu(options);
             System.out.println("\n");
-            option = scanner.nextInt();
             
-            switch(option)
+            String response = scanner.next();
+            
+            try
             {
-                case 1:
-                    if(canStartMonitor())
-                    {
-                        startExtJarProgram();
-                        
-                        int choice = getChoice("Do you want to exit the terminal now?", scanner);
-                        if(choice == 1)
-                            System.exit(choice);
-                    }
-                    break;
-                case 2:
-                    setupNotifications(scanner);
-                    break;
-                case 3:
-                    printNotificationSettings();
-                    break;
-                case 4:
-                    setupMailServer(scanner);
-                    break;
-                case 5:
-                    System.out.println("Node Monitor is closing, goodbye!");
-                    System.exit(0);
-                    break;
+                option = Integer.parseInt(response);
+
+                switch(option)
+                {
+                    case 1:
+                        if(canStartMonitor())
+                        {
+                            startExtJarProgram();
+
+                            int choice = getChoice("Do you want to exit the terminal now?", scanner);
+                            if(choice == 1)
+                                System.exit(choice);
+                        }
+                        break;
+                    case 2:
+                        setupNotifications(scanner);
+                        break;
+                    case 3:
+                        printNotificationSettings();
+                        break;
+                    case 4:
+                        setupMailServer(scanner);
+                        break;
+                    case 5:
+                        System.out.println("Node Monitor is closing, goodbye!");
+                        System.exit(0);
+                        break;
+                }
             }
+            catch (NumberFormatException e)
+            {
+                 System.out.println("\nInvalid input (" + response + "). Please try again...\n");
+            }      
         }
     }       
     
@@ -784,20 +794,20 @@ public class Notifier
          while(choice != 1 && choice != 2)
          {
              //catch input mismatch
+             String response = scanner.next();             
              try
              {
-                choice = scanner.nextInt();                 
-             }
-             catch (InputMismatchException e)
+                choice = Integer.parseInt(response);                 
+             } 
+             catch (NumberFormatException e)
              {
-                 System.out.println("\nInvalid input, please try again...\n");
+                 System.out.println("\nInvalid input (" + response + "). Please try again...\n");
              } 
              catch (Exception e)
              {
                  BackgroundService.AppendLog(e);
              }              
-         }
-         
+         }         
          return choice;
      }
      
@@ -810,17 +820,20 @@ public class Notifier
          while(choice < lower || choice > upper)
          {
              //catch input mismatch
+             String response = scanner.next();
+             
              try
              {
-                 choice = scanner.nextInt();
+                choice = Integer.parseInt(response);
+                
                 if(choice < lower)
                     System.out.println("Number is too low");
                 if(choice > upper)
                     System.out.println("Number is too high");
              }
-             catch (InputMismatchException e)
+             catch (NumberFormatException e)
              {
-                 System.out.println("\nInvalid input, please try again...\n");
+                 System.out.println("\nInvalid input (" + response + "). Please try again...\n");
              } 
              catch (Exception e)
              {
