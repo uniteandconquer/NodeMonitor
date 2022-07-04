@@ -1,7 +1,19 @@
 
-Watch the install guide video at https://rumble.com/v17oe2h-node-monitor-install-guide.html
+Watch the install guide video at 
 
-Watch the CLI setup video at https://rumble.com/v17ruw3-node-monitor-cli-setup-guide.html
+https://rumble.com/v17oe2h-node-monitor-install-guide.html
+
+Watch the CLI setup video at 
+
+https://rumble.com/v17ruw3-node-monitor-cli-setup-guide.html
+
+Watch the Qortal core handler walkthrough at 
+
+https://rumble.com/v1b4n5x-node-monitor-qortal-core-handler-update-walkthrough.html
+
+Watch the Qortal core handler CLI version walkthrough at 
+
+https://rumble.com/v1b4nm9-node-monitor-qortal-core-handler-update-cli-version-walkthrough.html
 
 --------
 
