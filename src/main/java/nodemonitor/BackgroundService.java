@@ -83,7 +83,6 @@ public class BackgroundService
     {  
         if (SystemTray.isSupported())
         {
-            AppendLog("Setting tray icon");
             URL imageURL = BackgroundService.class.getClassLoader().getResource("Images/icon.png");
             Image icon = Toolkit.getDefaultToolkit().getImage(imageURL);
             final PopupMenu popup = new PopupMenu();

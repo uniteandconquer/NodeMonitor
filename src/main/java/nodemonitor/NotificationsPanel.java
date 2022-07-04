@@ -335,7 +335,8 @@ public class NotificationsPanel extends javax.swing.JPanel
             }
             else
             {
-                JOptionPane.showMessageDialog(this, "The folder that was set is not valid\n" + (folder != null ? folder.getPath() : ""));
+                JOptionPane.showMessageDialog(this, "The folder that was set is not valid\n" + (folder != null ? folder.getPath() : ""),
+                        "Wrong folder",JOptionPane.ERROR_MESSAGE);
                 checkBox.setSelected(false);
                 Utilities.updateSetting(key, "false","notifications.json");   
             }
@@ -1914,7 +1915,8 @@ public class NotificationsPanel extends javax.swing.JPanel
             
             if(!selectedFolder.getPath().toLowerCase().endsWith("qortal"))
             {
-                JOptionPane.showMessageDialog(this, "The folder that was set is not valid\n" + selectedFolder.getPath());
+                JOptionPane.showMessageDialog(this, "The folder that was set is not valid\n" + selectedFolder.getPath(),
+                        "Wrong folder",JOptionPane.ERROR_MESSAGE);
                 return;
             }            
             

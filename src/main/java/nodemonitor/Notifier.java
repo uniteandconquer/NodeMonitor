@@ -15,6 +15,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.InputMismatchException;
 import java.util.Scanner;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -574,8 +575,8 @@ public class Notifier
 
                     System.out.println("\n\nSuccess! Qortal folder path was set:\n" + filePath + "\n\n"
                             + "PLEASE MAKE SURE THAT THE  'start-qortal.sh' AND 'stop-qortal.sh' FILES IN THE\n"
-                            + "'node-monitor/bin' FOLDER ARE EXECUTABLE!!\n\n" + System.getProperty("user.dir") + "/start-qortal.sh\n"
-                            + System.getProperty("user.dir") + "/start-qortal.sh\n\n"
+                            + "'node-monitor/bin' FOLDER ARE EXECUTABLE!!\n\n" + System.getProperty("user.dir") + "/bin/start-qortal.sh\n"
+                            + System.getProperty("user.dir") + "/bin/start-qortal.sh\n\n"
                             + "These scripts will be executed when the settings that you'll set up next get triggered.\n");     
 
                     //Linux and Mac version will only use this key to know if folder was set, the actual start/stop scripts
@@ -781,7 +782,21 @@ public class Notifier
                  + "2- No\n");
          
          while(choice != 1 && choice != 2)
-             choice = scanner.nextInt();
+         {
+             //catch input mismatch
+             try
+             {
+                choice = scanner.nextInt();                 
+             }
+             catch (InputMismatchException e)
+             {
+                 System.out.println("\nInvalid input, please try again...\n");
+             } 
+             catch (Exception e)
+             {
+                 BackgroundService.AppendLog(e);
+             }              
+         }
          
          return choice;
      }
@@ -794,11 +809,23 @@ public class Notifier
          
          while(choice < lower || choice > upper)
          {
-             choice = scanner.nextInt();
-             if(choice < lower)
-                 System.out.println("Number is too low");
-             if(choice > upper)
-                 System.out.println("Number is too high");
+             //catch input mismatch
+             try
+             {
+                 choice = scanner.nextInt();
+                if(choice < lower)
+                    System.out.println("Number is too low");
+                if(choice > upper)
+                    System.out.println("Number is too high");
+             }
+             catch (InputMismatchException e)
+             {
+                 System.out.println("\nInvalid input, please try again...\n");
+             } 
+             catch (Exception e)
+             {
+                 BackgroundService.AppendLog(e);
+             }                  
          }
          
          return choice;
@@ -808,47 +835,59 @@ public class Notifier
      {
          int choice;
          
-        String filePath;
+        String filePath = "";
 
         do
         {   
-            System.out.println("\nPlease enter the full file path of your Qortal folder:");                 
-            filePath = scanner.next();
-
-            if(filePath.endsWith("qortal"))
+            //catch input mismatch
+            try
             {
-                try
+                System.out.println("\nPlease enter the full file path of your Qortal folder:");                 
+                filePath = scanner.next();
+
+                if(filePath.endsWith("qortal"))
                 {
-                    File file = new File(filePath);
-                    if(!file.isDirectory())
+                    try
                     {
-                        choice = getChoice("Folder '" + filePath+  "' doesn't exist, try again?", scanner);
+                        File file = new File(filePath);
+                        if(!file.isDirectory())
+                        {
+                            choice = getChoice("Folder '" + filePath+  "' doesn't exist, try again?", scanner);
+                            if(choice == 1)
+                                filePath = "";
+                            else
+                                break;
+                        }
+                        else
+                            return filePath;
+                    }
+                    catch (Exception e)
+                    {
+                        choice = getChoice("Invalid path: '" + filePath+  "', try again?", scanner);
                         if(choice == 1)
                             filePath = "";
                         else
                             break;
                     }
-                    else
-                        return filePath;
+
                 }
-                catch (Exception e)
-                {
-                    choice = getChoice("Invalid path: '" + filePath+  "', try again?", scanner);
+                else
+                {                        
+                    choice = getChoice("Invalid folder : '" + filePath +  "' folder must be named 'qortal', try again?", scanner);
                     if(choice == 1)
                         filePath = "";
                     else
                         break;
                 }
-
             }
-            else
-            {                        
-                choice = getChoice("Invalid folder : '" + filePath +  "' folder must be named 'qortal', try again?", scanner);
-                if(choice == 1)
-                    filePath = "";
-                else
-                    break;
-            }
+             catch (InputMismatchException e)
+             {
+                 System.out.println("\nInvalid input, please try again...\n");
+             } 
+             catch (Exception e)
+             {
+                 BackgroundService.AppendLog(e);
+             }  
         }
         while (!filePath.endsWith("qortal"));
          

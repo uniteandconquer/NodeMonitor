@@ -199,6 +199,10 @@ public class AppearancePanel extends javax.swing.JPanel
     {
         try(Connection connection = ConnectionDB.getConnection(styleName, Folders.STYLES.get(), Extensions.STYLE))
         {
+            //when overwriting existing style file
+            if(dbManager.TableExists("gui", connection))
+                dbManager.ExecuteUpdate("drop table gui", connection);
+            
             dbManager.CreateTable(new String[]{"gui",
                 "background_color","int",
                 "component_color","int",
