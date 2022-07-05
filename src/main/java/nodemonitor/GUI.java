@@ -377,15 +377,28 @@ public class GUI extends javax.swing.JFrame
         };
         timerRunning = true;
         popupTimer.schedule(popupTask, 12000);                
-    }
+    }    
     
+    /**
+    The size of the dialog needs to be adjusted to the font type.<br>
+    We get the width of the entire string and divide that by the width of the label<br>
+    to find out how many lines the string will have.Then we add the line breaks in<br>
+    the string to find the actual lines.We multiply the number of actual lines by the<br>
+    string's actual height and add some margin to get the dialog height
+    @param evt 
+    @param message*/ 
     protected void showHintDialog(MouseEvent evt, String message)
     {
         hintDialogLabel.setText(Utilities.AllignHTML(message,"justify"));
-
-//        int x = (int)evt.getLocationOnScreen().getX();
-//        int y = (int)evt.getLocationOnScreen().getY();        
-//        setInfoDialogBounds(x, y, 6);
+        
+        FontRenderContext frc = new FontRenderContext(new AffineTransform(), true, true);
+        int textwidth = (int)(hintDialogLabel.getFont().getStringBounds(hintDialogLabel.getText(), frc).getWidth());
+        int textheight = (int)(hintDialogLabel.getFont().getStringBounds(hintDialogLabel.getText(), frc).getHeight());        
+        int lines = textwidth / (400 - 60);//width dialog - label left/right insets
+        lines += 6;        
+        //Dialog will always be 400 pixels wide, the height will depend on content and font type
+        hintDialog.setPreferredSize(new Dimension(400, (textheight * lines) + 150));
+        hintDialog.pack();
         
         SwingUtilities.invokeLater(() ->
         {
@@ -396,28 +409,6 @@ public class GUI extends javax.swing.JFrame
             hintDialog.setVisible(true);
         });
     }
-    
-    /**
-     *The size of the dialog needs to be adjusted to the font type.<br>
-     *We get the width of the entire string and divide that by the width of the label<br>
-     *to find out how many lines the string will have. Then we add the line breaks in<br>
-     *the string to find the actual lines. We multiply the number of actual lines by the<br>
-     *string's actual height and add some margin to get the dialog height*/ 
-     private void setInfoDialogBounds(int x, int y, int lineBreaks)
-     {
-        FontRenderContext frc = new FontRenderContext(new AffineTransform(), true, true);
-        int textwidth = (int)(hintDialogLabel.getFont().getStringBounds(hintDialogLabel.getText(), frc).getWidth());
-        int textheight = (int)(hintDialogLabel.getFont().getStringBounds(hintDialogLabel.getText(), frc).getHeight());        
-        int lines = textwidth / (400 - 60);//width dialog - label left/right insets
-        lines += lineBreaks;        
-        //Dialog will always be 400 pixels wide, the height will depend on content and font type
-        hintDialog.setPreferredSize(new Dimension(400, (textheight * lines) + 150));
-        hintDialog.pack();
-        
-        hintDialog.setLocation(x - (hintDialog.getWidth()/ 2),  y - (hintDialog.getHeight() /2));
-        
-        hintDialog.setVisible(true);
-     }
     
     protected void ExpandTree(JTree tree, int nodeLevel)
     {
