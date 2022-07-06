@@ -94,6 +94,7 @@ public class Notifier
     
     private boolean restartInProgress;
     private long lastRestartTime;
+    private long goneOfflineTime;
     private long syncAlertTime;
     private long mintAlertTime;
     private long connectionsAlertTime;
@@ -586,7 +587,7 @@ public class Notifier
                     System.out.println("\n\nSuccess! Qortal folder path was set:\n" + filePath + "\n\n"
                             + "PLEASE MAKE SURE THAT THE  'start-qortal.sh' AND 'stop-qortal.sh' FILES IN THE\n"
                             + "'node-monitor/bin' FOLDER ARE EXECUTABLE!!\n\n" + System.getProperty("user.dir") + "/bin/start-qortal.sh\n"
-                            + System.getProperty("user.dir") + "/bin/start-qortal.sh\n\n"
+                            + System.getProperty("user.dir") + "/bin/stop-qortal.sh\n\n"
                             + "These scripts will be executed when the settings that you'll set up next get triggered.\n");     
 
                     //Linux and Mac version will only use this key to know if folder was set, the actual start/stop scripts
@@ -966,6 +967,7 @@ public class Notifier
                 {                     
                     String jsonString = Utilities.ReadStringFromURL("http://" + dbManager.socket + "/admin/status");
                     wasOnline = true; 
+                    goneOfflineTime = 0;
                 
                     //will not be reached if can't ping API, error will be thrown
                     if(wasOffline && onlineEnabled)
@@ -1152,13 +1154,20 @@ public class Notifier
                 {
                     wasOffline = true;
                     
+                    //Only allow restarts at least 3 minutes after node has gone offline 
+                    if(goneOfflineTime == 0)
+                        goneOfflineTime = System.currentTimeMillis();
+                    else
+                    {    
+                        if(System.currentTimeMillis() - goneOfflineTime > 180000)
+                            if(restartCoreEnabled && !restartInProgress)
+                                initiateRestart(false, "");
+                    }
+                    
                     if(wasOnline && offlineEnabled)
                     {                        
                         poolAlert("Lost connection", "Qortal Node Monitor has lost the connection to your Qortal core.\nPlease check whether "
                                 + "your node is still online.",System.currentTimeMillis(),false);
-                        
-                        if(restartCoreEnabled && !restartInProgress)
-                            initiateRestart(false, "");
                         
 //                        BackgroundService.AppendLog("SENDING OFFLINE NOTIFICATION");
                         
@@ -1661,7 +1670,10 @@ public class Notifier
             return false;
         }
         
-        lastRestartTime = System.currentTimeMillis();
+        //only block restart attempts for shutdown/restart cycles
+        if(includeShutdown)
+            lastRestartTime = System.currentTimeMillis();        
+        
         restartInProgress = true;
         
         Thread thread = new Thread(() ->
