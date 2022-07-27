@@ -17,6 +17,12 @@ https://rumble.com/v1b4nm9-node-monitor-qortal-core-handler-update-cli-version-w
 
 --------
 
+*IMPORTANT NOTE FOR MAC AND LINUX USERS
+
+The styles were created using a Windows Operating System. This means that the fonts used in each style are probably not available on your system. This will cause the app to apply a standard font which could result in rendering artifacts in the texts displayed by the app. To fix this, simply choose a font that is to your liking in the appearance menu and it will automatically be applied and remembered in your settings. It will not be saved to your style file, you can optionally change the font for any style and click the save button to overwrite the existing style.
+
+--------
+
 Node Monitor is handy tool that shows you the current status of your Qortal node, your minting account and some other info about the network and your system. Its purpose is to show you how your Qortal node is performing in real-time.
 
 You can choose to enable in-app and/or e-mail notifications when certain events are triggered:
